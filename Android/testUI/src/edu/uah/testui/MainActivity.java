@@ -43,16 +43,18 @@ public class MainActivity extends Activity {
 	CheckBox chkbxRawComm;				//check box for raw command or speed/direction
 	TextView txtvwStatus;				//textview for Status
 	List<String> list;					//string list for train names
+	List<String> addressList;			//string list to hold all bt device addresses
 	ArrayAdapter<String> dataAdapter;	//adapter for spinner and string list connection
 	int[] trainNum;						//int array to hold train numbers
 	int index = 0;						//current index to train array
 	
-	private static String address = "00:06:66:61:7A:AA";
+	private static String address = "00:06:66:61:7A:AA"; //default address will be changed later in code
     private static final UUID MY_UUID = UUID
-                    .fromString("00001101-0000-1000-8000-00805F9B34FB");
+                    .fromString("00001101-0000-1000-8000-00805F9B34FB"); //default serial port profile UUID
+    									
 
 	
-	BluetoothAdapter btAdapter = null;
+	BluetoothAdapter btAdapter = null;	//start all BT items as null to start.
 	BluetoothDevice btDevice = null;
 	BluetoothSocket btSocket = null;
 	OutputStream btOutStream = null;
@@ -65,40 +67,83 @@ public class MainActivity extends Activity {
         Log.d("OnTrack", "On Create");
         init();							//initialize all values and tie ui components to code
         setupButtonListeners();			//sets up button listeners for each button
-        BTSetup();
+        BTSetup();						//initialize all bluetooth settings.
         
     }
     
-    public void Connect() {
-    	if(BluetoothAdapter.checkBluetoothAddress(address)){
-		BluetoothDevice device = btAdapter.getRemoteDevice(address);
-		Log.d("OnTrack", "Connecting to ... " + device);
-		btAdapter.cancelDiscovery();
-		Log.d("OnTrack", "Canceled Discovery");
-		try {
-
-			Log.d("OnTrack", "trying to create socket");
-              btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
-/* Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that */
-			btSocket.connect();
-			Log.d("OnTrack", "Connection made.");
-		} catch (IOException e) {
-
-			Log.d("OnTrack", "failed to create socket");
-			try {
-				btSocket.close();
-			} catch (IOException e2) {
-				Log.d("OnTrack", "Unable to end the connection");
-			}
-			Log.d("OnTrack", "Socket creation failed");
+    public void Connect() {	
+    	/*
+    	 * Creates an alert dialog which displays a list of all bonded bluetooth devices.
+    	 * This allows you to choose the Bluetooth Device you wish to connect to.
+    	 * Once the user selects the device from the list, an attempt to connect is made.
+    	 */
+    	//Test alert dialog with list view of all bt devices.
+    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(this);
+        builderSingle.setIcon(R.drawable.ic_launcher);
+        builderSingle.setTitle("Select One Name:-");
+        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.select_dialog_singlechoice);
+        Set<BluetoothDevice> btDevices = btAdapter.getBondedDevices();
+        addressList = new ArrayList<String>();
+        for (BluetoothDevice bluetoothDevice : btDevices) {
+			arrayAdapter.add(bluetoothDevice.getName());
+			addressList.add(bluetoothDevice.getAddress());
 		}
-    	}
-    	else
-    		Log.d("OnTrack", "Bad Address");
-               /* this is a method used to read what the Arduino says for example when you write Serial.print("Hello world.") in your Arduino code */
+        builderSingle.setNegativeButton("cancel",
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+
+        builderSingle.setAdapter(arrayAdapter,
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        address = addressList.get(which);
+                    }
+                });
+        builderSingle.show();
+        
+        //Original BT Code that works below:
+        if(BluetoothAdapter.checkBluetoothAddress(address)){
+    		BluetoothDevice device = btAdapter.getRemoteDevice(address);
+    		Log.d("OnTrack", "Connecting to ... " + device);
+    		btAdapter.cancelDiscovery();
+    		Log.d("OnTrack", "Canceled Discovery");
+    		try {
+
+    			Log.d("OnTrack", "trying to create socket");
+                  btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+    		// Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that
+    			btSocket.connect();
+    			Log.d("OnTrack", "Connection made.");
+    		} catch (IOException e) {
+
+    			Log.d("OnTrack", "failed to create socket");
+    			try {
+    				btSocket.close();
+    			} catch (IOException e2) {
+    				Log.d("OnTrack", "Unable to end the connection");
+    			}
+    			Log.d("OnTrack", "Socket creation failed");
+    		}
+        	}
+        	else
+        		Log.d("OnTrack", "Bad Address");
+        
 	}
     
     private void BTSetup(){
+    	/*
+    	 * Bluetooth setup function.
+    	 * Grabs the default adapter of the device it is working on.
+    	 * If this adapter is null then the device does not have bluetooth.
+    	 * If the adapter is not enabled, then create an intent asking the user to enable bluetooth.
+    	 */
     	btAdapter = BluetoothAdapter.getDefaultAdapter();
     	if(btAdapter != null){
     		if(!btAdapter.isEnabled()){
@@ -139,6 +184,7 @@ public class MainActivity extends Activity {
 		txtvwStatus = (TextView) findViewById(R.id.txtvwStatus);
 		chkbxRawComm = (CheckBox)findViewById(R.id.chkbxRawComm);
 		trainNum = new int[MAX_TRAINS];
+		
 		 
 		skbarSpeed.setMax(31);
 		btnDirection.setText("Forward");
@@ -186,7 +232,6 @@ public class MainActivity extends Activity {
     	try {
 			btOutStream = btSocket.getOutputStream();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
     	if(buffer != null)
