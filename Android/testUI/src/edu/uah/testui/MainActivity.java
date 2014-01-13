@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -16,6 +17,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -48,7 +50,7 @@ public class MainActivity extends Activity {
 	int[] trainNum;						//int array to hold train numbers
 	int index = 0;						//current index to train array
 	
-	private static String address = "00:06:66:61:7A:AA"; //default address will be changed later in code
+	private static String address = null; //default address will be changed later in code
     private static final UUID MY_UUID = UUID
                     .fromString("00001101-0000-1000-8000-00805F9B34FB"); //default serial port profile UUID
     									
@@ -71,17 +73,18 @@ public class MainActivity extends Activity {
         
     }
     
-    public void Connect() {	
+    private class BTConnect extends AsyncTask<Void, Void, Void> {	
     	/*
     	 * Creates an alert dialog which displays a list of all bonded bluetooth devices.
     	 * This allows you to choose the Bluetooth Device you wish to connect to.
     	 * Once the user selects the device from the list, an attempt to connect is made.
     	 */
     	//Test alert dialog with list view of all bt devices.
-    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(this);
+    	protected void onPreExecute(){
+    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(MainActivity.this);
         builderSingle.setIcon(R.drawable.ic_launcher);
         builderSingle.setTitle("Select One Name:-");
-        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this,
+        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(MainActivity.this,
                 android.R.layout.select_dialog_singlechoice);
         Set<BluetoothDevice> btDevices = btAdapter.getBondedDevices();
         addressList = new ArrayList<String>();
@@ -89,6 +92,8 @@ public class MainActivity extends Activity {
 			arrayAdapter.add(bluetoothDevice.getName());
 			addressList.add(bluetoothDevice.getAddress());
 		}
+        arrayAdapter.add("Add new");
+		addressList.add("Add new");
         builderSingle.setNegativeButton("cancel",
                 new DialogInterface.OnClickListener() {
 
@@ -103,39 +108,102 @@ public class MainActivity extends Activity {
 
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                    	if(addressList.get(which) == "Add new"){
+                        	Intent intentBluetooth = new Intent();
+                            intentBluetooth.setAction(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+                            startActivity(intentBluetooth);  
+                        }
                         address = addressList.get(which);
+                        
+                        
                     }
                 });
         builderSingle.show();
-        
-        //Original BT Code that works below:
-        if(BluetoothAdapter.checkBluetoothAddress(address)){
-    		BluetoothDevice device = btAdapter.getRemoteDevice(address);
-    		Log.d("OnTrack", "Connecting to ... " + device);
-    		btAdapter.cancelDiscovery();
-    		Log.d("OnTrack", "Canceled Discovery");
-    		try {
+        txtvwStatus.setText("Connecting to Bluetooth, please wait...");
+    	}
+    	@Override
+		protected void onPostExecute(Void result) {
+			new btmakeconnection().execute();
+			super.onPostExecute(result);
 
-    			Log.d("OnTrack", "trying to create socket");
-                  btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
-    		// Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that
-    			btSocket.connect();
-    			Log.d("OnTrack", "Connection made.");
-    		} catch (IOException e) {
+	        
+	    	}
+		@Override
+		protected Void doInBackground(Void... params) {
+			return null;
+			
+		}
+    }
+    private class btmakeconnection extends AsyncTask<Void, Void, Void>{
+    	
+    	int maxTries = 20;
+    	int curTry = 0;
+    	@Override
+		protected void onPostExecute(Void result) {
+    		if(curTry >= maxTries)
+    			txtvwStatus.setText("Connection Unsuccessful!");
+    		else
+    			txtvwStatus.setText("Connection Successful!");
+			super.onPostExecute(result);
 
-    			Log.d("OnTrack", "failed to create socket");
-    			try {
-    				btSocket.close();
-    			} catch (IOException e2) {
-    				Log.d("OnTrack", "Unable to end the connection");
-    			}
-    			Log.d("OnTrack", "Socket creation failed");
-    		}
-        	}
-        	else
-        		Log.d("OnTrack", "Bad Address");
-        
-	}
+	        
+	    	}
+
+		@Override
+		protected Void doInBackground(Void... params) {
+			//Original BT Code that works below:
+			while(address == null);
+			while((btSocket == null || !btSocket.isConnected()) && curTry < maxTries){
+				curTry++;
+				if(BluetoothAdapter.checkBluetoothAddress(address)){
+	    		
+	    		btAdapter.cancelDiscovery();
+	    		Log.d("OnTrack", "Canceled Discovery");
+	    		BluetoothDevice device = btAdapter.getRemoteDevice(address);
+	    		Log.d("OnTrack", "Connecting to ... " + device);
+	    		
+	    		try {
+
+	    			Log.d("OnTrack", "trying to create socket");
+	                  btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+	    		// Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that
+	    			btSocket.connect();
+	    			//txtvwStatus.setText("BlueTooth Connection Successful");
+	    			Log.d("OnTrack", "Connection made.");
+	    		} catch (IOException e) {
+
+	    			//txtvwStatus.setText("BlueTooth Connection Unsuccessful");
+	    			Log.d("OnTrack", "failed to create socket");
+	    			try {
+	    				btSocket.close();
+	    			} catch (IOException e2) {
+	    				Log.d("OnTrack", "Unable to end the connection");
+	    			}
+	    			Log.d("OnTrack", "Socket creation failed");
+	    		}
+	        	}
+	        	else{
+
+	        		Log.d("OnTrack", "Bad Address");
+	    			//txtvwStatus.setText("BlueTooth Connection Unsuccessful");
+	        	}
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			
+			return null;
+		}
+    	
+    }
+    public void setStatus(String input){
+    	txtvwStatus.setText(input);
+    }
+
     
     private void BTSetup(){
     	/*
@@ -414,7 +482,7 @@ public class MainActivity extends Activity {
 			 */
 			@Override
 			public void onClick(View arg0) {
-				Connect();
+				new BTConnect().execute();
 			}
 		});
     }
