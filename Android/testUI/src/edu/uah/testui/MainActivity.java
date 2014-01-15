@@ -24,6 +24,8 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -34,7 +36,7 @@ public class MainActivity extends Activity {
 	final int MAX_TRAINS = 10;
 	
 	EditText edtxtCustomCommAdd; 		//edit text for custom address
-	EditText edtxtCustomCommSpeed;		//edit text for custom speed
+	EditText edtxtCustomCommCommand;		//edit text for custom speed
 	
 	SeekBar skbarSpeed;					//seek bar for speed control
 	Spinner spnTrain;					//spinner for train selection
@@ -242,7 +244,7 @@ public class MainActivity extends Activity {
     	 * Attaches the list to the spinner via an adapter
     	 */
 		edtxtCustomCommAdd = (EditText) findViewById(R.id.edtxtCustCommAddress);
-		edtxtCustomCommSpeed = (EditText) findViewById(R.id.edtxtCustCommSpeed);
+		edtxtCustomCommCommand = (EditText) findViewById(R.id.edtxtCustCommCommand);
 		skbarSpeed = (SeekBar) findViewById(R.id.skbarSpeed);
 		spnTrain = (Spinner) findViewById(R.id.spnTrain);
 		btnSend = (Button) findViewById(R.id.btnSend);
@@ -253,11 +255,14 @@ public class MainActivity extends Activity {
 		chkbxRawComm = (CheckBox)findViewById(R.id.chkbxRawComm);
 		trainNum = new int[MAX_TRAINS];
 		
+		chkbxRawComm.setChecked(false);
+		edtxtCustomCommAdd.setEnabled(chkbxRawComm.isChecked());
+		edtxtCustomCommCommand.setEnabled(chkbxRawComm.isChecked());
 		 
 		skbarSpeed.setMax(31);
 		btnDirection.setText("Forward");
 		//edtxtCustomCommAdd.setText("");
-		//edtxtCustomCommSpeed.setText("");
+		//edtxtCustomCommCommand.setText("");
 		 
 		 
 		list = new ArrayList<String>();
@@ -310,7 +315,7 @@ public class MainActivity extends Activity {
     			e.printStackTrace();
     		}
     	edtxtCustomCommAdd.setText("");
-		edtxtCustomCommSpeed.setText("");
+		edtxtCustomCommCommand.setText("");
     }
     
     public void btnSendListener(){
@@ -319,20 +324,24 @@ public class MainActivity extends Activity {
 			int address = 0;
 			int speed = 0;
 			int commandbits = 0;
-			if(edtxtCustomCommAdd.getText().toString().length() > 0 && edtxtCustomCommSpeed.getText().toString().length() > 0 && chkbxRawComm.isChecked()){
+			if(edtxtCustomCommAdd.getText().toString().length() > 0 && edtxtCustomCommCommand.getText().toString().length() > 0 && chkbxRawComm.isChecked()){
+				//txtvwStatus.setText("Sending... \" train# 0x"+ Integer.toHexString(buffer[0]) + " commandbits: 0x"+ Integer.toHexString(buffer[1]) + " checksum: 0x" + Integer.toHexString(buffer[2]) + "\".");
+				
 				try {
-					address =  Integer.parseInt(edtxtCustomCommAdd.getText().toString());
-					commandbits =  Integer.parseInt(edtxtCustomCommSpeed.getText().toString());
+					//address =  Integer.parseInt(edtxtCustomCommAdd.getText().toString());
+					//commandbits =  Integer.parseInt(edtxtCustomCommCommand.getText().toString());
+					address = Integer.parseInt(edtxtCustomCommAdd.getText().toString(),16);
+					commandbits =  Integer.parseInt(edtxtCustomCommCommand.getText().toString(), 16);
 				}
 				catch(NumberFormatException nfe) {
 		        	   System.out.println("Could not parse " + nfe);
 		        	   txtvwStatus.setText("Could not Parse");
 	        	} 
 			}
-			else if(edtxtCustomCommAdd.getText().toString().length() > 0 && edtxtCustomCommSpeed.getText().toString().length() > 0){
+			/*else if(edtxtCustomCommAdd.getText().toString().length() > 0 && edtxtCustomCommCommand.getText().toString().length() > 0){
 				try {
 					address =  Integer.parseInt(edtxtCustomCommAdd.getText().toString());
-					speed =  Integer.parseInt(edtxtCustomCommSpeed.getText().toString());
+					speed =  Integer.parseInt(edtxtCustomCommCommand.getText().toString());
 				}
 				catch(NumberFormatException nfe) {
 		        	   System.out.println("Could not parse " + nfe);
@@ -355,7 +364,7 @@ public class MainActivity extends Activity {
 					txtvwStatus.setText("Speed not in range for non-raw input, please use 0-32");
 				}
 					
-			}
+			}*/
 			else  {
 				address = trainNum[spnTrain.getSelectedItemPosition()];
 				speed = skbarSpeed.getProgress();
@@ -468,6 +477,19 @@ public class MainActivity extends Activity {
 					btnDirection.setText("Reverse");
 				else
 					btnDirection.setText("Forward");
+			}
+		});
+	    
+	    chkbxRawComm.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+			
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				edtxtCustomCommAdd.setEnabled(chkbxRawComm.isChecked());
+				edtxtCustomCommCommand.setEnabled(chkbxRawComm.isChecked());
+				spnTrain.setEnabled(!chkbxRawComm.isChecked());
+				btnAdd.setEnabled(!chkbxRawComm.isChecked());
+				skbarSpeed.setEnabled(!chkbxRawComm.isChecked());
+				btnDirection.setEnabled(!chkbxRawComm.isChecked());
 			}
 		});
 	    btnConnect.setOnClickListener(new View.OnClickListener() {

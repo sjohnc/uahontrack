@@ -10,8 +10,8 @@
     <string name="direction">Forward</string>
     <string name="send">Send</string>
     <string name="add">+</string>
-    <string name="CustCommHintAddress">Address (Dec)</string>
-    <string name="CustCommHintSpeed">Speed (Dec)</string>
+    <string name="CustCommHintAddress">Address (Hex)</string>
+    <string name="CustCommHintCommand">Command (Hex)</string>
     <string name="rawCommand">Raw</string>
     <string name="connect">Connect</string>
 

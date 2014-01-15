@@ -96,14 +96,14 @@
         android:layout_centerHorizontal="true" />
 
     <EditText
-        android:id="@+id/edtxtCustCommSpeed"
+        android:id="@+id/edtxtCustCommCommand"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBottom="@+id/edtxtCustCommAddress"
         android:layout_alignRight="@+id/skbarSpeed"
         android:layout_toRightOf="@+id/chkbxRawComm"
         android:ems="10"
-        android:hint="@string/CustCommHintSpeed"
+        android:hint="@string/CustCommHintCommand"
         android:inputType="number" />
 
     <CheckBox

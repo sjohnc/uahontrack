@@ -31,7 +31,7 @@ public final class R {
         public static final int btnSend=0x7f080005;
         public static final int chkbxRawComm=0x7f080002;
         public static final int edtxtCustCommAddress=0x7f080001;
-        public static final int edtxtCustCommSpeed=0x7f08000c;
+        public static final int edtxtCustCommCommand=0x7f08000c;
         public static final int skbarSpeed=0x7f080004;
         public static final int spnTrain=0x7f080007;
         public static final int txtvwCommand=0x7f080000;
@@ -47,7 +47,7 @@ public final class R {
     }
     public static final class string {
         public static final int CustCommHintAddress=0x7f050009;
-        public static final int CustCommHintSpeed=0x7f05000a;
+        public static final int CustCommHintCommand=0x7f05000a;
         public static final int action_settings=0x7f050001;
         public static final int add=0x7f050008;
         public static final int app_name=0x7f050000;
