@@ -14,5 +14,6 @@
     <string name="CustCommHintCommand">Command (Hex)</string>
     <string name="rawCommand">Raw</string>
     <string name="connect">Connect</string>
+    <string name="current">Current</string>
 
 </resources>

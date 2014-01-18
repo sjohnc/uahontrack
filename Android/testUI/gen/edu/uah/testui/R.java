@@ -24,9 +24,10 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int action_settings=0x7f08000d;
+        public static final int action_settings=0x7f08000f;
         public static final int btnAdd=0x7f080009;
         public static final int btnConnect=0x7f08000b;
+        public static final int btnCurrent=0x7f08000d;
         public static final int btnDirection=0x7f080003;
         public static final int btnSend=0x7f080005;
         public static final int chkbxRawComm=0x7f080002;
@@ -35,6 +36,7 @@ public final class R {
         public static final int skbarSpeed=0x7f080004;
         public static final int spnTrain=0x7f080007;
         public static final int txtvwCommand=0x7f080000;
+        public static final int txtvwCurrent=0x7f08000e;
         public static final int txtvwSpeed=0x7f080006;
         public static final int txtvwStatus=0x7f08000a;
         public static final int txtvwTrain=0x7f080008;
@@ -52,6 +54,7 @@ public final class R {
         public static final int add=0x7f050008;
         public static final int app_name=0x7f050000;
         public static final int connect=0x7f05000c;
+        public static final int current=0x7f05000d;
         public static final int custComm=0x7f050003;
         public static final int direction=0x7f050006;
         public static final int hello_world=0x7f050002;

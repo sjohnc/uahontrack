@@ -2,14 +2,17 @@ package edu.uah.testui;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -17,10 +20,13 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.text.format.Time;
 import android.util.Log;
+import android.view.DragEvent;
 import android.view.Menu;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -37,18 +43,22 @@ public class MainActivity extends Activity {
 	
 	EditText edtxtCustomCommAdd; 		//edit text for custom address
 	EditText edtxtCustomCommCommand;		//edit text for custom speed
-	
 	SeekBar skbarSpeed;					//seek bar for speed control
 	Spinner spnTrain;					//spinner for train selection
 	Button btnSend;						//button for sending packet
 	Button btnDirection;				//button for changing direction
 	Button btnAdd;						//button for adding a train
 	Button btnConnect;					//button for connecting to bluetooth
+	Button btnCurrent;					//button for receiving current information
 	CheckBox chkbxRawComm;				//check box for raw command or speed/direction
 	TextView txtvwStatus;				//textview for Status
+	TextView txtvwCurrent;
 	List<String> list;					//string list for train names
 	List<String> addressList;			//string list to hold all bt device addresses
 	ArrayAdapter<String> dataAdapter;	//adapter for spinner and string list connection
+	
+	Scanner scan;
+	
 	int[] trainNum;						//int array to hold train numbers
 	int index = 0;						//current index to train array
 	
@@ -56,7 +66,18 @@ public class MainActivity extends Activity {
     private static final UUID MY_UUID = UUID
                     .fromString("00001101-0000-1000-8000-00805F9B34FB"); //default serial port profile UUID
     									
-
+    Handler handler = new Handler();
+    Runnable currentRun = new Runnable() {
+        public void run() {
+        	try {
+				btnCurrentListener();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        	handler.postDelayed(currentRun, 1000);
+        }
+    };
 	
 	BluetoothAdapter btAdapter = null;	//start all BT items as null to start.
 	BluetoothDevice btDevice = null;
@@ -72,6 +93,10 @@ public class MainActivity extends Activity {
         init();							//initialize all values and tie ui components to code
         setupButtonListeners();			//sets up button listeners for each button
         BTSetup();						//initialize all bluetooth settings.
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        getWindow().setSoftInputMode(
+        	      WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        
         
     }
     
@@ -83,21 +108,29 @@ public class MainActivity extends Activity {
     	 */
     	//Test alert dialog with list view of all bt devices.
     	protected void onPreExecute(){
-    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(MainActivity.this);
-        builderSingle.setIcon(R.drawable.ic_launcher);
-        builderSingle.setTitle("Select One Name:-");
-        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(MainActivity.this,
-                android.R.layout.select_dialog_singlechoice);
-        Set<BluetoothDevice> btDevices = btAdapter.getBondedDevices();
-        addressList = new ArrayList<String>();
-        for (BluetoothDevice bluetoothDevice : btDevices) {
-			arrayAdapter.add(bluetoothDevice.getName());
-			addressList.add(bluetoothDevice.getAddress());
-		}
-        arrayAdapter.add("Add new");
-		addressList.add("Add new");
-        builderSingle.setNegativeButton("cancel",
-                new DialogInterface.OnClickListener() {
+    		handler.removeCallbacks(currentRun);
+    		if(btSocket != null)
+	    		try {
+					btSocket.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+	    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(MainActivity.this);
+	        builderSingle.setIcon(R.drawable.ic_launcher);
+	        builderSingle.setTitle("Select One Name:-");
+	        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(MainActivity.this,
+	                android.R.layout.select_dialog_singlechoice);
+	        Set<BluetoothDevice> btDevices = btAdapter.getBondedDevices();
+	        addressList = new ArrayList<String>();
+	        for (BluetoothDevice bluetoothDevice : btDevices) {
+				arrayAdapter.add(bluetoothDevice.getName());
+				addressList.add(bluetoothDevice.getAddress());
+			}
+	        arrayAdapter.add("Add new");
+			addressList.add("Add new");
+	        builderSingle.setNegativeButton("cancel",
+	                new DialogInterface.OnClickListener() {
 
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -126,6 +159,7 @@ public class MainActivity extends Activity {
     	@Override
 		protected void onPostExecute(Void result) {
 			new btmakeconnection().execute();
+			
 			super.onPostExecute(result);
 
 	        
@@ -142,6 +176,8 @@ public class MainActivity extends Activity {
     	int curTry = 0;
     	@Override
 		protected void onPostExecute(Void result) {
+
+            handler.postDelayed(currentRun, 5000);
     		if(curTry >= maxTries)
     			txtvwStatus.setText("Connection Unsuccessful!");
     		else
@@ -161,17 +197,18 @@ public class MainActivity extends Activity {
 	    		
 	    		btAdapter.cancelDiscovery();
 	    		Log.d("OnTrack", "Canceled Discovery");
-	    		BluetoothDevice device = btAdapter.getRemoteDevice(address);
-	    		Log.d("OnTrack", "Connecting to ... " + device);
+	    		btDevice = btAdapter.getRemoteDevice(address);
+	    		Log.d("OnTrack", "Connecting to ... " + btDevice);
 	    		
 	    		try {
 
 	    			Log.d("OnTrack", "trying to create socket");
-	                  btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+	                  btSocket = btDevice.createRfcommSocketToServiceRecord(MY_UUID);
 	    		// Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that
 	    			btSocket.connect();
 	    			//txtvwStatus.setText("BlueTooth Connection Successful");
 	    			Log.d("OnTrack", "Connection made.");
+	    			
 	    		} catch (IOException e) {
 
 	    			//txtvwStatus.setText("BlueTooth Connection Unsuccessful");
@@ -251,8 +288,13 @@ public class MainActivity extends Activity {
 		btnDirection = (Button) findViewById(R.id.btnDirection);
 		btnAdd = (Button) findViewById(R.id.btnAdd);
 		btnConnect = (Button) findViewById(R.id.btnConnect);
+		btnCurrent = (Button) findViewById(R.id.btnCurrent);
 		txtvwStatus = (TextView) findViewById(R.id.txtvwStatus);
+		txtvwCurrent = (TextView)findViewById(R.id.txtvwCurrent);
 		chkbxRawComm = (CheckBox)findViewById(R.id.chkbxRawComm);
+		
+		
+		
 		trainNum = new int[MAX_TRAINS];
 		
 		chkbxRawComm.setChecked(false);
@@ -290,27 +332,29 @@ public class MainActivity extends Activity {
 		spnTrain.setAdapter(dataAdapter);
     }
     
-    private void sendMessage(int train, int speed, int checksum){
+    private void sendMessage(int address, int command, int checksum){
     	/*
     	 * Currently only sets the custom text edit box to what should be sent.
     	 */
-    	
-    	txtvwStatus.setText("Sending... \" train# 0x"+ Integer.toHexString(train) + " commandbits: 0x"+ Integer.toHexString(speed) + " checksum: 0x" + Integer.toHexString(checksum) + "\".");
-		byte[] buffer = new byte[3];
-    	buffer[0] = (byte)(train & 0xff);
-    	buffer[1] = (byte)(speed & 0xff);
-    	buffer[2] = (byte)(checksum & 0xff);
-    	txtvwStatus.setText("Sending... \" train# 0x"+ Integer.toHexString(buffer[0]) + " commandbits: 0x"+ Integer.toHexString(buffer[1]) + " checksum: 0x" + Integer.toHexString(buffer[2]) + "\".");
+    	int dcc = 0;
+    	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(address) + " commandbits: 0x"+ Integer.toHexString(command) + " checksum: 0x" + Integer.toHexString(checksum) + "\".");
+		byte[] outbuffer = new byte[4];
+		outbuffer[0] = (byte)(dcc & 0xff);
+    	outbuffer[1] = (byte)(address & 0xff);
+    	outbuffer[2] = (byte)(command & 0xff);
+    	outbuffer[3] = (byte)(checksum & 0xff);
+    	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(outbuffer[1]) + " commandbits: 0x"+ Integer.toHexString(outbuffer[2]) + " checksum: 0x" + Integer.toHexString(outbuffer[3]) + "\".");
 		
     	try {
 			btOutStream = btSocket.getOutputStream();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-    	if(buffer != null)
+    	if(outbuffer != null)
     		try {
-    				btOutStream.write(buffer);
+    				btOutStream.write(outbuffer);
     				btOutStream.flush();
+    				//btOutStream.close();
     		} catch (IOException e) {
     			e.printStackTrace();
     		}
@@ -425,7 +469,54 @@ public class MainActivity extends Activity {
 		else
 			txtvwStatus.setText("No more trains allowed.");
 	}
-    
+    private void btnCurrentListener() throws IOException{
+    	
+    	
+    	if(btSocket != null && btSocket.isConnected()){
+
+    		Log.d("OnTrack","Current: connection is good!");
+    		byte[] outbuffer = new byte[1];
+    		outbuffer[0]	= (byte)(3 & 0xff);
+    		byte[] inbuffer = new byte[2];
+    		try {
+				btInStream = btSocket.getInputStream();
+				btOutStream = btSocket.getOutputStream();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        	if(outbuffer != null)
+        		try {
+
+        			Log.d("OnTrack","Current: Outputting via bluetooth");
+    				btOutStream.write(outbuffer);
+    				btOutStream.flush();
+        		} catch (IOException e) {
+        			e.printStackTrace();
+        		}
+        	while(btInStream != null && btInStream.available() >= 2)
+        		Log.d("OnTrack","Current: reading now.");
+        		try {
+        			Log.d("OnTrack","Current: before read");
+        			btInStream.read(inbuffer, 0, 2);
+        			int current = (inbuffer[0] & 0xff);
+        			current = current << 8;
+        			current = current & 0xff00;
+        			current = current | (inbuffer[1] & 0xff);
+        			current = current & 0xffff;
+        			current = (int) (current * 4.296);
+        			
+        			txtvwCurrent.setText(String.valueOf(current) + " mA");
+        			Log.d("OnTrack","Current: " + String.valueOf(current) + " mA");
+        			Log.d("OnTrack","Current: byte1 :" + Integer.toHexString(inbuffer[0]) + " byte 2: " + Integer.toHexString(inbuffer[1] & 0xff));
+
+        		} catch (IOException e) {
+        			e.printStackTrace();
+        		}
+    	}
+
+    	
+    }
     
     private void setupButtonListeners(){
 
@@ -462,6 +553,29 @@ public class MainActivity extends Activity {
 			}
 		});
 	    
+	    btnAdd.setOnClickListener(new View.OnClickListener() {
+    		/*
+    		 * (non-Javadoc)
+    		 * @see android.view.View.OnClickListener#onClick(android.view.View)
+    		 * Description: Add button handler
+    		 * Expected Results: Opens dialog for input. Should only take integers
+    		 * 		between 1 and 127, 0 is reserved for broadcast messages.
+    		 * 		Currently takes the address number and appends it to "Train "
+    		 * 		to handle naming from the list, future should allow naming of trains.
+    		 * 		Adds to both the string list for selection, and also the int array for
+    		 * 		easier calculation.
+    		 */
+			@Override
+			public void onClick(View arg0) {
+				try {
+					btnCurrentListener();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		});
+	    
 	    btnDirection.setOnClickListener(new View.OnClickListener() {
 			/*
 			 * (non-Javadoc)
@@ -479,6 +593,29 @@ public class MainActivity extends Activity {
 					btnDirection.setText("Forward");
 			}
 		});
+	    
+	    skbarSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+			
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) {
+				if(btSocket.isConnected())
+					btnSendListener();
+			}
+			
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onProgressChanged(SeekBar seekBar, int progress,
+					boolean fromUser) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+		
 	    
 	    chkbxRawComm.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 			

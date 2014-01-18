@@ -122,4 +122,20 @@
         android:layout_centerHorizontal="true"
         android:text="@string/connect" />
 
+    <Button
+        android:id="@+id/btnCurrent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btnConnect"
+        android:layout_alignRight="@+id/btnSend"
+        android:text="@string/current" />
+
+    <TextView
+        android:id="@+id/txtvwCurrent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/btnCurrent"
+        android:layout_alignTop="@+id/btnConnect"
+        android:text="@string/current" />
+
 </RelativeLayout>
