@@ -2,7 +2,6 @@ package edu.uah.testui;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +20,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.text.format.Time;
 import android.util.Log;
-import android.view.DragEvent;
 import android.view.Menu;
 import android.view.View;
 import android.view.WindowManager;
@@ -36,6 +33,7 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 public class MainActivity extends Activity {
 	
@@ -43,14 +41,20 @@ public class MainActivity extends Activity {
 	
 	EditText edtxtCustomCommAdd; 		//edit text for custom address
 	EditText edtxtCustomCommCommand;		//edit text for custom speed
+	EditText edtxtLocoOpCode;
+	EditText edtxtLocoAddress;
+	EditText edtxtLocoCommand;
+	EditText edtxtLocoChecksum;
 	SeekBar skbarSpeed;					//seek bar for speed control
 	Spinner spnTrain;					//spinner for train selection
 	Button btnSend;						//button for sending packet
+	Button btnLocoSend;
 	Button btnDirection;				//button for changing direction
 	Button btnAdd;						//button for adding a train
 	Button btnConnect;					//button for connecting to bluetooth
-	Button btnCurrent;					//button for receiving current information
+	ToggleButton btnLoconet;					//button for receiving current information
 	CheckBox chkbxRawComm;				//check box for raw command or speed/direction
+	CheckBox chkbxLocoRaw;
 	TextView txtvwStatus;				//textview for Status
 	TextView txtvwCurrent;
 	List<String> list;					//string list for train names
@@ -70,7 +74,7 @@ public class MainActivity extends Activity {
     Runnable currentRun = new Runnable() {
         public void run() {
         	try {
-				btnCurrentListener();
+        		CurrentRequest();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -288,21 +292,35 @@ public class MainActivity extends Activity {
 		btnDirection = (Button) findViewById(R.id.btnDirection);
 		btnAdd = (Button) findViewById(R.id.btnAdd);
 		btnConnect = (Button) findViewById(R.id.btnConnect);
-		btnCurrent = (Button) findViewById(R.id.btnCurrent);
+		btnLoconet = (ToggleButton) findViewById(R.id.btnLoconet);
 		txtvwStatus = (TextView) findViewById(R.id.txtvwStatus);
 		txtvwCurrent = (TextView)findViewById(R.id.txtvwCurrent);
 		chkbxRawComm = (CheckBox)findViewById(R.id.chkbxRawComm);
+		edtxtLocoOpCode = (EditText)findViewById(R.id.edtxtLocoOpcode);
+		edtxtLocoAddress = (EditText)findViewById(R.id.edtxtLocoAdd);
+		edtxtLocoCommand = (EditText)findViewById(R.id.edtxtLocoComm);
+		edtxtLocoChecksum = (EditText)findViewById(R.id.edtxtLocoChecksum);
+		chkbxLocoRaw = (CheckBox)findViewById(R.id.ckboxLocoRaw);
+		btnLocoSend = (Button)findViewById(R.id.btnLocoSend);
 		
 		
 		
 		trainNum = new int[MAX_TRAINS];
 		
 		chkbxRawComm.setChecked(false);
+		chkbxLocoRaw.setChecked(false);
 		edtxtCustomCommAdd.setEnabled(chkbxRawComm.isChecked());
 		edtxtCustomCommCommand.setEnabled(chkbxRawComm.isChecked());
+		edtxtLocoOpCode.setEnabled(chkbxLocoRaw.isChecked());
+		edtxtLocoAddress.setEnabled(chkbxLocoRaw.isChecked());
+		edtxtLocoCommand.setEnabled(chkbxLocoRaw.isChecked());
+		edtxtLocoChecksum.setEnabled(chkbxLocoRaw.isChecked());
+		
 		 
 		skbarSpeed.setMax(31);
 		btnDirection.setText("Forward");
+		btnLoconet.setTextOff("Diverge");
+		btnLoconet.setTextOn("Straight");
 		//edtxtCustomCommAdd.setText("");
 		//edtxtCustomCommCommand.setText("");
 		 
@@ -469,9 +487,9 @@ public class MainActivity extends Activity {
 		else
 			txtvwStatus.setText("No more trains allowed.");
 	}
-    private void btnCurrentListener() throws IOException{
+    private void CurrentRequest() throws IOException{
     	
-    	
+    	/*
     	if(btSocket != null && btSocket.isConnected()){
 
     		Log.d("OnTrack","Current: connection is good!");
@@ -515,6 +533,119 @@ public class MainActivity extends Activity {
         		}
     	}
 
+    	*/
+    }
+    
+    private void btnLocoSendListener(){
+    	if(btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
+    		if(edtxtLocoOpCode.getText().length() > 0 &&
+    				edtxtLocoAddress.getText().length() > 0 &&
+    				edtxtLocoCommand.getText().length() > 0 &&
+    				edtxtLocoChecksum.getText().length() > 0 ){
+	    		int loconet = 	0x01;
+	    		int opcode = 	Integer.parseInt(edtxtLocoOpCode.getText().toString(), 16);
+	    		int address = 	Integer.parseInt(edtxtLocoAddress.getText().toString(), 16);
+	    		int command = 	Integer.parseInt(edtxtLocoCommand.getText().toString(), 16);
+	    		int checksum = 	Integer.parseInt(edtxtLocoChecksum.getText().toString(), 16);
+	    		int endbyte = 	0x0a;
+	        	byte[] outbuffer = new byte[6];
+	    		outbuffer[0] = (byte)(loconet & 0xff);
+	        	outbuffer[1] = (byte)(opcode & 0xff);
+	        	outbuffer[2] = (byte)(address & 0xff);
+	        	outbuffer[3] = (byte)(command & 0xff);
+	        	outbuffer[4] = (byte)(checksum & 0xff);
+	        	outbuffer[5] = (byte)(endbyte & 0xff);
+	        	txtvwStatus.setText("Message Type: " + Integer.toHexString(outbuffer[0]) + 
+	        			" OpCode: " + Integer.toHexString(outbuffer[1]) +
+	        			" Address: " + Integer.toHexString(outbuffer[2]) +
+	        			" Command: " + Integer.toHexString(outbuffer[3]) +
+	        			" Checksum: " + Integer.toHexString(outbuffer[4]) +
+	        			" End Byte: " + Integer.toHexString(outbuffer[5])
+	        			);
+
+	        	try {
+	    			btOutStream = btSocket.getOutputStream();
+	    		} catch (IOException e1) {
+	    			e1.printStackTrace();
+	    		}
+	        	if(outbuffer != null)
+	        		try {
+	        				btOutStream.write(outbuffer);
+	        				btOutStream.flush();
+	        				//btOutStream.close();
+	        		} catch (IOException e) {
+	        			e.printStackTrace();
+	        		}
+    		}
+    	}
+    }
+    
+    private void btnLoconetListener(){
+    	if(btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
+    		if(btnLoconet.getText().toString() == "Diverge"){
+	    		int loconet = 	0x01;
+	    		int opcode = 	0xb0;
+	    		int address = 	0x00;
+	    		int command = 	0x30;
+	    		int checksum = 	0x7f;
+	    		int endbyte = 	0x0a;
+	        	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(address) + " commandbits: 0x"+ Integer.toHexString(command) + " checksum: 0x" + Integer.toHexString(checksum) + "\".");
+	    		byte[] outbuffer = new byte[6];
+	    		outbuffer[0] = (byte)(loconet & 0xff);
+	        	outbuffer[1] = (byte)(opcode & 0xff);
+	        	outbuffer[2] = (byte)(address & 0xff);
+	        	outbuffer[3] = (byte)(command & 0xff);
+	        	outbuffer[4] = (byte)(checksum & 0xff);
+	        	outbuffer[5] = (byte)(endbyte & 0xff);
+	        	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(outbuffer[1]) + " commandbits: 0x"+ Integer.toHexString(outbuffer[2]) + " checksum: 0x" + Integer.toHexString(outbuffer[3]) + "\".");
+	    		
+	        	try {
+	    			btOutStream = btSocket.getOutputStream();
+	    		} catch (IOException e1) {
+	    			e1.printStackTrace();
+	    		}
+	        	if(outbuffer != null)
+	        		try {
+	        				btOutStream.write(outbuffer);
+	        				btOutStream.flush();
+	        				//btOutStream.close();
+	        		} catch (IOException e) {
+	        			e.printStackTrace();
+	        		}
+	    	}
+    		else{
+    			int loconet = 	0x01;
+	    		int opcode = 	0xb0;
+	    		int address = 	0x00;
+	    		int command = 	0x10;
+	    		int checksum = 	0x5f;
+	    		int endbyte = 	0x0a;
+	        	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(address) + " commandbits: 0x"+ Integer.toHexString(command) + " checksum: 0x" + Integer.toHexString(checksum) + "\".");
+	    		byte[] outbuffer = new byte[6];
+	    		outbuffer[0] = (byte)(loconet & 0xff);
+	        	outbuffer[1] = (byte)(opcode & 0xff);
+	        	outbuffer[2] = (byte)(address & 0xff);
+	        	outbuffer[3] = (byte)(command & 0xff);
+	        	outbuffer[4] = (byte)(checksum & 0xff);
+	        	outbuffer[5] = (byte)(endbyte & 0xff);
+	        	txtvwStatus.setText("Sending... \" address# 0x"+ Integer.toHexString(outbuffer[1]) + " commandbits: 0x"+ Integer.toHexString(outbuffer[2]) + " checksum: 0x" + Integer.toHexString(outbuffer[3]) + "\".");
+	    		
+	        	try {
+	    			btOutStream = btSocket.getOutputStream();
+	    		} catch (IOException e1) {
+	    			e1.printStackTrace();
+	    		}
+	        	if(outbuffer != null)
+	        		try {
+	        				btOutStream.write(outbuffer);
+	        				btOutStream.flush();
+	        				//btOutStream.close();
+	        		} catch (IOException e) {
+	        			e.printStackTrace();
+	        		}
+	    	}
+    			
+    	}
     	
     }
     
@@ -553,7 +684,7 @@ public class MainActivity extends Activity {
 			}
 		});
 	    
-	    btnAdd.setOnClickListener(new View.OnClickListener() {
+	    btnLoconet.setOnClickListener(new View.OnClickListener() {
     		/*
     		 * (non-Javadoc)
     		 * @see android.view.View.OnClickListener#onClick(android.view.View)
@@ -567,13 +698,8 @@ public class MainActivity extends Activity {
     		 */
 			@Override
 			public void onClick(View arg0) {
-				try {
-					btnCurrentListener();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
+					btnLoconetListener();
+					}
 		});
 	    
 	    btnDirection.setOnClickListener(new View.OnClickListener() {
@@ -629,6 +755,27 @@ public class MainActivity extends Activity {
 				btnDirection.setEnabled(!chkbxRawComm.isChecked());
 			}
 		});
+	    
+	    chkbxLocoRaw.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+			
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				edtxtLocoOpCode.setEnabled(chkbxLocoRaw.isChecked());
+				edtxtLocoAddress.setEnabled(chkbxLocoRaw.isChecked());
+				edtxtLocoCommand.setEnabled(chkbxLocoRaw.isChecked());
+				edtxtLocoChecksum.setEnabled(chkbxLocoRaw.isChecked());
+			}
+		});
+	    
+	    btnLocoSend.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				btnLocoSendListener();
+				
+			}
+		});
+	    
 	    btnConnect.setOnClickListener(new View.OnClickListener() {
 			/*
 			 * (non-Javadoc)

@@ -22,21 +22,11 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/txtvwCommand"
-        android:layout_toLeftOf="@+id/chkbxRawComm"
         android:ems="10"
         android:hint="@string/CustCommHintAddress"
-        android:inputType="number" >
+		android:digits="0123456789ABCDEFabcdef">
 		
-        <requestFocus />
     </EditText>
-
-    <Button
-        android:id="@+id/btnDirection"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/skbarSpeed"
-        android:layout_centerHorizontal="true"
-        android:text="@string/direction" />
 
     <Button
         android:id="@+id/btnSend"
@@ -61,7 +51,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/txtvwCommand"
-        android:layout_below="@+id/txtvwSpeed" />
+        android:layout_below="@+id/txtvwSpeed"
+        android:layout_toLeftOf="@+id/btnConnect" />
 
     <TextView
         android:id="@+id/txtvwTrain"
@@ -78,15 +69,7 @@
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/txtvwTrain"
         android:layout_below="@+id/txtvwTrain"
-        android:layout_toLeftOf="@+id/btnDirection" />
-
-    <Button
-        android:id="@+id/btnAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/spnTrain"
-        android:layout_toRightOf="@+id/spnTrain"
-        android:text="@string/add" />
+        android:layout_toLeftOf="@+id/btnAdd" />
 
     <TextView
         android:id="@+id/txtvwStatus"
@@ -95,25 +78,6 @@
         android:layout_above="@+id/btnConnect"
         android:layout_centerHorizontal="true" />
 
-    <EditText
-        android:id="@+id/edtxtCustCommCommand"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/edtxtCustCommAddress"
-        android:layout_alignRight="@+id/skbarSpeed"
-        android:layout_toRightOf="@+id/chkbxRawComm"
-        android:ems="10"
-        android:hint="@string/CustCommHintCommand"
-        android:inputType="number" />
-
-    <CheckBox
-        android:id="@+id/chkbxRawComm"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/txtvwTrain"
-        android:layout_centerHorizontal="true"
-        android:text="@string/rawCommand" />
-
     <Button
         android:id="@+id/btnConnect"
         android:layout_width="wrap_content"
@@ -121,21 +85,130 @@
         android:layout_above="@+id/btnSend"
         android:layout_centerHorizontal="true"
         android:text="@string/connect" />
-
-    <Button
-        android:id="@+id/btnCurrent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/btnConnect"
-        android:layout_alignRight="@+id/btnSend"
-        android:text="@string/current" />
-
+    
     <TextView
         android:id="@+id/txtvwCurrent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/btnCurrent"
-        android:layout_alignTop="@+id/btnConnect"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
         android:text="@string/current" />
+
+    <ToggleButton
+        android:id="@+id/btnLoconet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/txtvwCurrent"
+        android:layout_alignTop="@+id/btnAdd"
+        android:textOff="Straight"
+        android:textOn="Diverge" />
+
+    <TextView
+        android:id="@+id/txtvwLocoCommand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/txtvwCurrent"
+        android:layout_alignBottom="@+id/txtvwCurrent"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:text="@string/locoCommand" />
+
+    <EditText
+        android:id="@+id/edtxtLocoOpcode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwLocoCommand"
+        android:layout_alignRight="@+id/txtvwLocoCommand"
+        android:layout_alignTop="@+id/chkbxRawComm"
+        android:ems="10"
+		android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintOpcode" >
+    </EditText>
+
+    <CheckBox
+        android:id="@+id/ckboxLocoRaw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/edtxtLocoOpcode"
+        android:layout_toRightOf="@+id/edtxtLocoOpcode"
+        android:text="@string/locoRaw" />
+
+    <EditText
+        android:id="@+id/edtxtLocoAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtLocoOpcode"
+        android:layout_toLeftOf="@+id/ckboxLocoRaw"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintAddress" />
+
+    <EditText
+        android:id="@+id/edtxtLocoComm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtLocoAdd"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintCommand" />
+
+    <EditText
+        android:id="@+id/edtxtLocoChecksum"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/edtxtLocoComm"
+        android:layout_alignRight="@+id/edtxtLocoAdd"
+        android:layout_below="@+id/edtxtLocoComm"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/locochecksum" />
+
+    <Button
+        android:id="@+id/btnLocoSend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnSend"
+        android:layout_alignBottom="@+id/btnSend"
+        android:layout_alignLeft="@+id/edtxtLocoChecksum"
+        android:layout_alignRight="@+id/btnLoconet"
+        android:text="@string/locosend" />
+
+    <EditText
+        android:id="@+id/edtxtCustCommCommand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtCustCommAddress"
+        android:layout_toLeftOf="@+id/chkbxRawComm"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/CustCommHintCommand"
+        />
+
+    <CheckBox
+        android:id="@+id/chkbxRawComm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/edtxtCustCommCommand"
+        android:layout_toRightOf="@+id/edtxtCustCommAddress"
+        android:text="@string/rawCommand" />
+
+    <Button
+        android:id="@+id/btnDirection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/skbarSpeed"
+        android:layout_marginLeft="27dp"
+        android:layout_toRightOf="@+id/txtvwCommand"
+        android:text="@string/direction" />
+
+    <Button
+        android:id="@+id/btnAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/edtxtLocoChecksum"
+        android:layout_alignBottom="@+id/edtxtLocoChecksum"
+        android:layout_alignRight="@+id/skbarSpeed"
+        android:text="@string/add" />
 
 </RelativeLayout>

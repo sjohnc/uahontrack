@@ -4,16 +4,23 @@
     <string name="app_name">testUI</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-    <string name="custComm">Custom Command</string>
+    <string name="custComm">Custom DCC Command</string>
     <string name="selTrain">Select Train</string>
     <string name="spdCtrl">Speed Control</string>
     <string name="direction">Forward</string>
-    <string name="send">Send</string>
+    <string name="send">DCC Send</string>
+    <string name="locosend">LocoNet Send</string>
     <string name="add">+</string>
     <string name="CustCommHintAddress">Address (Hex)</string>
     <string name="CustCommHintCommand">Command (Hex)</string>
+    <string name="LocoCommHintOpcode">Op Code (Hex)</string>
+    <string name="LocoCommHintAddress">Address (Hex)</string>
+    <string name="LocoCommHintCommand">Command (Hex)</string>
     <string name="rawCommand">Raw</string>
     <string name="connect">Connect</string>
     <string name="current">Current</string>
+    <string name="locoCommand">Custom LocoNet Command</string>
+    <string name="locoRaw">Raw</string>
+    <string name="locochecksum">Checksum (Hex)</string>
 
 </resources>
