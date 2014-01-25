@@ -211,4 +211,36 @@
         android:layout_alignRight="@+id/skbarSpeed"
         android:text="@string/add" />
 
+    <TextView
+        android:id="@+id/txtvwSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/edtxtLocoChecksum"
+        android:layout_below="@+id/spnTrain"
+        android:text="@string/selSwitch" />
+
+    <Spinner
+        android:id="@+id/spnSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@+id/btnLoconet"
+        android:layout_toRightOf="@+id/btnConnect" />
+
+    <Button
+        android:id="@+id/btnAddSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/spnSwitch"
+        android:layout_toRightOf="@+id/spnSwitch"
+        android:text="@string/add" />
+
+    <Button
+        android:id="@+id/btnSwitchPosition"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/ckboxLocoRaw"
+        android:layout_below="@+id/btnDirection"
+        android:text="Button" />
+
 </RelativeLayout>

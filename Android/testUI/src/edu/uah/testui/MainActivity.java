@@ -17,10 +17,14 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.View;
 import android.view.WindowManager;
@@ -38,6 +42,7 @@ import android.widget.ToggleButton;
 public class MainActivity extends Activity {
 	
 	final int MAX_TRAINS = 10;
+	final int MAX_SWITCHES = 10;
 	
 	EditText edtxtCustomCommAdd; 		//edit text for custom address
 	EditText edtxtCustomCommCommand;		//edit text for custom speed
@@ -47,11 +52,14 @@ public class MainActivity extends Activity {
 	EditText edtxtLocoChecksum;
 	SeekBar skbarSpeed;					//seek bar for speed control
 	Spinner spnTrain;					//spinner for train selection
+	Spinner spnSwitch;
 	Button btnSend;						//button for sending packet
 	Button btnLocoSend;
 	Button btnDirection;				//button for changing direction
 	Button btnAdd;						//button for adding a train
+	Button btnAddSwitch;
 	Button btnConnect;					//button for connecting to bluetooth
+	Button btnSwitchPosition;
 	ToggleButton btnLoconet;					//button for receiving current information
 	CheckBox chkbxRawComm;				//check box for raw command or speed/direction
 	CheckBox chkbxLocoRaw;
@@ -59,13 +67,15 @@ public class MainActivity extends Activity {
 	TextView txtvwCurrent;
 	List<String> list;					//string list for train names
 	List<String> addressList;			//string list to hold all bt device addresses
+	List<String> switchList;					//string list for train names
 	ArrayAdapter<String> dataAdapter;	//adapter for spinner and string list connection
-	
+	ArrayAdapter<String> switchAdapter;
 	Scanner scan;
 	
 	int[] trainNum;						//int array to hold train numbers
-	int index = 0;						//current index to train array
-	
+	int[] switchAddress;
+	int trainIndex = 0;						//current index to train array
+	int switchIndex = 0;
 	private static String address = null; //default address will be changed later in code
     private static final UUID MY_UUID = UUID
                     .fromString("00001101-0000-1000-8000-00805F9B34FB"); //default serial port profile UUID
@@ -88,6 +98,36 @@ public class MainActivity extends Activity {
 	BluetoothSocket btSocket = null;
 	OutputStream btOutStream = null;
 	InputStream btInStream = null;
+	Boolean btconnected = false;
+	
+	BroadcastReceiver bcastReceiver =  new BroadcastReceiver() {
+
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String action = intent.getAction();
+	        BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+	        if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+	               //Device has disconnected
+	        	btconnected = false;
+	        	txtvwCurrent.setText("Disconnected");
+	    		handler.removeCallbacks(currentRun);
+	    		try {
+					btSocket.close();
+		    		btSocket = null;
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+	        }
+	        if(BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
+	        	btconnected = true;
+	        	txtvwCurrent.setText("Connected");
+	        }
+			
+		}
+
+	};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,11 +140,77 @@ public class MainActivity extends Activity {
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         getWindow().setSoftInputMode(
         	      WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        IntentFilter f1 = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED);
+        IntentFilter f2 = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        IntentFilter f3 = new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED);
+        this.registerReceiver(bcastReceiver, f1);
+        this.registerReceiver(bcastReceiver, f2);
+        this.registerReceiver(bcastReceiver, f3);
         
         
     }
     
-    private class BTConnect extends AsyncTask<Void, Void, Void> {	
+    @Override
+	protected void onPause() {
+		// TODO Auto-generated method stub
+		super.onPause();
+	}
+
+
+	@Override
+	protected void onStop() {
+		// TODO Auto-generated method stub
+		
+		super.onStop();
+	}
+	
+	
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if(keyCode == KeyEvent.KEYCODE_BACK) {
+	        //Ask the user if they want to quit
+	        new AlertDialog.Builder(this)
+	        .setIcon(android.R.drawable.ic_dialog_alert)
+	        .setTitle(R.string.quit)
+	        .setMessage(R.string.really_quit)
+	        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+
+	            @Override
+	            public void onClick(DialogInterface dialog, int which) {
+
+	                //Stop the activity
+	                MainActivity.this.finish();    
+	            }
+
+	        })
+	        .setNegativeButton(R.string.no, null)
+	        .show();
+
+	        return true;
+	    }
+	    else {
+	        return super.onKeyDown(keyCode, event);
+	    }
+	}
+
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		unregisterReceiver(bcastReceiver);
+		handler.removeCallbacks(currentRun);
+		try {
+			btSocket.close();
+    		btSocket = null;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		super.onDestroy();
+	}
+
+
+
+	private class BTConnect extends AsyncTask<Void, Void, Void> {	
     	/*
     	 * Creates an alert dialog which displays a list of all bonded bluetooth devices.
     	 * This allows you to choose the Bluetooth Device you wish to connect to.
@@ -300,10 +406,14 @@ public class MainActivity extends Activity {
 		edtxtLocoChecksum = (EditText)findViewById(R.id.edtxtLocoChecksum);
 		chkbxLocoRaw = (CheckBox)findViewById(R.id.ckboxLocoRaw);
 		btnLocoSend = (Button)findViewById(R.id.btnLocoSend);
+		spnSwitch = (Spinner)findViewById(R.id.spnSwitch);
+		btnAddSwitch = (Button)findViewById(R.id.btnAddSwitch);
+		btnSwitchPosition = (Button)findViewById(R.id.btnSwitchPosition);
 		
 		
 		
 		trainNum = new int[MAX_TRAINS];
+		switchAddress = new int[MAX_SWITCHES];
 		
 		chkbxRawComm.setChecked(false);
 		chkbxLocoRaw.setChecked(false);
@@ -317,6 +427,7 @@ public class MainActivity extends Activity {
 		 
 		skbarSpeed.setMax(31);
 		btnDirection.setText("Forward");
+		btnSwitchPosition.setText("Straight");
 		btnLoconet.setTextOff("Diverge");
 		btnLoconet.setTextOn("Straight");
 		//edtxtCustomCommAdd.setText("");
@@ -324,23 +435,24 @@ public class MainActivity extends Activity {
 		 
 		 
 		list = new ArrayList<String>();
+		switchList = new ArrayList<String>();
 		
 		//default starting values
-		trainNum[0] = 1;
-		index++;
-		list.add("Train 1");
-		trainNum[1] = 2;
-		index++;
-		list.add("Train 2");
-		trainNum[2] = 3;
-		index++;
-		list.add("Train 3");
-		trainNum[3] = 5;
-		index++;
-		list.add("Train 5");
-		trainNum[4] = 15;
-		index++;
-		list.add("Train 15");
+		for (int i = 0; i < 5; i++) {
+			
+			trainNum[trainIndex] = i;
+			list.add("Train " + String.valueOf(trainNum[trainIndex]));
+			trainIndex++;
+			switchAddress[switchIndex] = i;
+			switchList.add("Switch " + String.valueOf(switchAddress[switchIndex]));
+			switchIndex++;
+		
+		}
+		switchAdapter = new ArrayAdapter<String>(this,
+				android.R.layout.simple_spinner_item, switchList);
+		switchAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			spnSwitch.setAdapter(switchAdapter);
+		
 		
 		dataAdapter = new ArrayAdapter<String>(this,
 			android.R.layout.simple_spinner_item, list);
@@ -377,9 +489,42 @@ public class MainActivity extends Activity {
     	edtxtCustomCommAdd.setText("");
 		edtxtCustomCommCommand.setText("");
     }
+    public void btnAddSwitchListener(){
+    	final EditText input = new EditText(MainActivity.this);
+		if(switchIndex < MAX_SWITCHES){			//Checks to make sure the maximum number of trains hasn't been exceeded.
+			new AlertDialog.Builder(MainActivity.this)
+		    .setTitle("Add A Switch")
+		    .setMessage("Please input the switch address number")
+		    .setView(input)
+		    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int whichButton) {
+		        	int value;
+		        	try {
+		        	    value = Integer.parseInt(input.getText().toString());
+		        	    if (value >= 0 && value <= 127){
+			        	    switchAddress[switchIndex] = value;
+			        	    switchIndex++;
+				            switchList.add("Switch " + value);
+		        	    }
+		        	    else
+		        	    	txtvwStatus.setText("Switch out of range.");
+		        	} catch(NumberFormatException nfe) {
+		        	   System.out.println("Could not parse " + nfe);
+		        	} 
+		        	
+		        }
+		    }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int whichButton) {
+		            // Do nothing.
+		        }
+		    }).show();
+		}
+		else
+			txtvwStatus.setText("No more switches allowed.");
+	}
     
     public void btnSendListener(){
-    	if(btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
+    	if(btconnected && btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
     		//testing one more time.
 			int address = 0;
 			int speed = 0;
@@ -454,7 +599,7 @@ public class MainActivity extends Activity {
     public void btnAddListener(){
 
 		final EditText input = new EditText(MainActivity.this);
-		if(index < MAX_TRAINS){			//Checks to make sure the maximum number of trains hasn't been exceeded.
+		if(trainIndex < MAX_TRAINS){			//Checks to make sure the maximum number of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
 		    .setTitle("Add A Train")
 		    .setMessage("Please input the train number")
@@ -465,8 +610,8 @@ public class MainActivity extends Activity {
 		        	try {
 		        	    value = Integer.parseInt(input.getText().toString());
 		        	    if (value >= 0 && value <= 127){
-			        	    trainNum[index] = value;
-				            index++;
+			        	    trainNum[trainIndex] = value;
+				            trainIndex++;
 				            list.add("Train " + value);
 		        	    }
 		        	    else
@@ -487,8 +632,8 @@ public class MainActivity extends Activity {
 	}
     private void CurrentRequest() throws IOException{
     	
-    	/*
-    	if(btSocket != null && btSocket.isConnected()){
+    	
+    	if(btconnected && btSocket != null && btSocket.isConnected()){
 
     		Log.d("OnTrack","Current: connection is good!");
     		byte[] outbuffer = new byte[1];
@@ -509,7 +654,7 @@ public class MainActivity extends Activity {
         		} catch (IOException e) {
         			e.printStackTrace();
         		}
-        	while(btInStream != null && btInStream.available() >= 2)
+        	while(btconnected && btInStream != null && btInStream.available() >= 2){
         		Log.d("OnTrack","Current: reading now.");
         		try {
         			Log.d("OnTrack","Current: before read");
@@ -528,24 +673,44 @@ public class MainActivity extends Activity {
         		} catch (IOException e) {
         			e.printStackTrace();
         		}
+        		}
     	}
 
-    	*/
+    	
     }
     
     private void btnLocoSendListener(){
-    	if(btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
+    	int loconet = 	0x01;
+		int opcode = 	0xB0;
+		int address = 	0;
+		int command = 	0;
+		int checksum = 	0;
+		int endbyte = 	0x0a;
+		int simpleSwitchAddress = 0;
+		byte[] outbuffer = new byte[6];
+		
+    	if(btconnected && btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
     		if(edtxtLocoOpCode.getText().length() > 0 &&
     				edtxtLocoAddress.getText().length() > 0 &&
     				edtxtLocoCommand.getText().length() > 0 &&
-    				edtxtLocoChecksum.getText().length() > 0 ){
-	    		int loconet = 	0x01;
-	    		int opcode = 	Integer.parseInt(edtxtLocoOpCode.getText().toString(), 16);
-	    		int address = 	Integer.parseInt(edtxtLocoAddress.getText().toString(), 16);
-	    		int command = 	Integer.parseInt(edtxtLocoCommand.getText().toString(), 16);
-	    		int checksum = 	Integer.parseInt(edtxtLocoChecksum.getText().toString(), 16);
-	    		int endbyte = 	0x0a;
-	        	byte[] outbuffer = new byte[6];
+    				edtxtLocoChecksum.getText().length() > 0 &&
+    				chkbxLocoRaw.isChecked()){
+	    		 opcode = 	Integer.parseInt(edtxtLocoOpCode.getText().toString(), 16);
+	    		 address = 	Integer.parseInt(edtxtLocoAddress.getText().toString(), 16);
+	    		 command = 	Integer.parseInt(edtxtLocoCommand.getText().toString(), 16);
+	    		 checksum = Integer.parseInt(edtxtLocoChecksum.getText().toString(), 16);
+    		}
+    		else{
+    			simpleSwitchAddress = switchAddress[spnSwitch.getSelectedItemPosition()];
+    			address = simpleSwitchAddress & 0x7f;
+    			command = ((simpleSwitchAddress >> 7) & 0x0f);
+    			if(btnSwitchPosition.getText().toString() == "Straight")
+    				command = (0x30 | (command & 0x0f));
+    			else
+    				command = (0x10 | (command & 0x0f));
+    		}
+    		checksum = ~(((opcode & 0xff) ^ (address & 0xff)) ^ (command & 0xff));
+	        	
 	    		outbuffer[0] = (byte)(loconet & 0xff);
 	        	outbuffer[1] = (byte)(opcode & 0xff);
 	        	outbuffer[2] = (byte)(address & 0xff);
@@ -575,10 +740,10 @@ public class MainActivity extends Activity {
 	        		}
     		}
     	}
-    }
     
-    private void btnLoconetListener(){
-    	if(btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
+    
+    private void btnLoconetHardCoded(){
+    	if(btconnected && btSocket != null && btSocket.isConnected()){ //check to see if it is not null, then see if it is connected.
     		if(btnLoconet.getText().toString() == "Diverge"){
 	    		int loconet = 	0x01;
 	    		int opcode = 	0xb0;
@@ -695,7 +860,7 @@ public class MainActivity extends Activity {
     		 */
 			@Override
 			public void onClick(View arg0) {
-					btnLoconetListener();
+				btnLoconetHardCoded();
 					}
 		});
 	    
@@ -716,12 +881,37 @@ public class MainActivity extends Activity {
 					btnDirection.setText("Forward");
 			}
 		});
+	    btnSwitchPosition.setOnClickListener(new View.OnClickListener() {
+			/*
+			 * (non-Javadoc)
+			 * @see android.view.View.OnClickListener#onClick(android.view.View)
+			 * Description: On click listener for direction button.
+			 * Expected Results: Click button to toggle between forward and reverse.
+			 * 		Logic is inside the send function to control messages related to
+			 * 		direction, simply toggles the button text.
+			 */
+			@Override
+			public void onClick(View arg0) {
+				if (btnSwitchPosition.getText() == "Straight")
+					btnSwitchPosition.setText("Divert");
+				else
+					btnSwitchPosition.setText("Straight");
+			}
+		});
+	    btnAddSwitch.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				btnAddSwitchListener();
+				
+			}
+		});
 	    
 	    skbarSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 			
 			@Override
 			public void onStopTrackingTouch(SeekBar seekBar) {
-				if(btSocket != null && btSocket.isConnected())
+				if(btconnected && btSocket != null && btSocket.isConnected())
 					btnSendListener();
 			}
 			
@@ -736,7 +926,7 @@ public class MainActivity extends Activity {
 				
 			}
 		});
-		
+	    
 	    
 	    chkbxRawComm.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 			

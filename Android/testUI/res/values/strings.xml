@@ -22,5 +22,13 @@
     <string name="locoCommand">Custom LocoNet Command</string>
     <string name="locoRaw">Raw</string>
     <string name="locochecksum">Checksum (Hex)</string>
+    <string name="quit">Quit?</string>
+    <string name="really_quit">Do you want to quit?</string>
+    <string name="yes">Quit</string>
+    <string name="no">Don\'t Quit</string>
+    <string name="selSwitch">Select Switch</string>
+    
+    
+    
 
 </resources>
