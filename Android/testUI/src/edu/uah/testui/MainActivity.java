@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
         	try {
         		CurrentRequest();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			}
         	handler.postDelayed(currentRun, 1000);
@@ -117,7 +117,6 @@ public class MainActivity extends Activity {
 	    		try {
 					btSocket.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 	    	AlertDialog.Builder builderSingle = new AlertDialog.Builder(MainActivity.this);
@@ -233,7 +232,6 @@ public class MainActivity extends Activity {
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -500,7 +498,6 @@ public class MainActivity extends Activity {
 				btInStream = btSocket.getInputStream();
 				btOutStream = btSocket.getOutputStream();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
         	if(outbuffer != null)
@@ -724,20 +721,18 @@ public class MainActivity extends Activity {
 			
 			@Override
 			public void onStopTrackingTouch(SeekBar seekBar) {
-				if(btSocket.isConnected())
+				if(btSocket != null && btSocket.isConnected())
 					btnSendListener();
 			}
 			
 			@Override
 			public void onStartTrackingTouch(SeekBar seekBar) {
-				// TODO Auto-generated method stub
 				
 			}
 			
 			@Override
 			public void onProgressChanged(SeekBar seekBar, int progress,
 					boolean fromUser) {
-				// TODO Auto-generated method stub
 				
 			}
 		});
