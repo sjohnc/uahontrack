@@ -202,30 +202,22 @@
         android:layout_toRightOf="@+id/txtvwCommand"
         android:text="@string/direction" />
 
-    <Button
-        android:id="@+id/btnAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/edtxtLocoChecksum"
-        android:layout_alignBottom="@+id/edtxtLocoChecksum"
-        android:layout_alignRight="@+id/skbarSpeed"
-        android:text="@string/add" />
-
     <TextView
         android:id="@+id/txtvwSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/edtxtLocoChecksum"
-        android:layout_below="@+id/spnTrain"
+        android:layout_below="@+id/edtxtLocoChecksum"
         android:text="@string/selSwitch" />
 
     <Spinner
         android:id="@+id/spnSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwSwitch"
+        android:layout_below="@+id/txtvwSwitch"
         android:layout_centerVertical="true"
-        android:layout_toLeftOf="@+id/btnLoconet"
-        android:layout_toRightOf="@+id/btnConnect" />
+        android:layout_toLeftOf="@+id/btnLoconet" />
 
     <Button
         android:id="@+id/btnAddSwitch"
@@ -240,7 +232,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/ckboxLocoRaw"
-        android:layout_below="@+id/btnDirection"
+        android:layout_below="@+id/spnSwitch"
         android:text="Button" />
+
+    <Button
+        android:id="@+id/btnAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/edtxtLocoChecksum"
+        android:layout_alignBottom="@+id/edtxtLocoChecksum"
+        android:layout_toLeftOf="@+id/btnConnect"
+        android:text="@string/add" />
 
 </RelativeLayout>
