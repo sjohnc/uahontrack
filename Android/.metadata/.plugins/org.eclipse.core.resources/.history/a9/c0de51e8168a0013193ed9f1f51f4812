@@ -1,0 +1,247 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context=".MainActivity" >
+
+    <TextView
+        android:id="@+id/txtvwCommand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:text="@string/custComm" />
+
+    <EditText
+        android:id="@+id/edtxtCustCommAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/txtvwCommand"
+        android:ems="10"
+        android:hint="@string/CustCommHintAddress"
+		android:digits="0123456789ABCDEFabcdef">
+		
+    </EditText>
+
+    <Button
+        android:id="@+id/btnSend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/skbarSpeed"
+        android:layout_alignParentBottom="true"
+        android:layout_alignRight="@+id/skbarSpeed"
+        android:text="@string/send" />
+
+    <TextView
+        android:id="@+id/txtvwSpeed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/skbarSpeed"
+        android:layout_below="@+id/spnTrain"
+        android:layout_marginTop="16dp"
+        android:text="@string/spdCtrl" />
+
+    <SeekBar
+        android:id="@+id/skbarSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwCommand"
+        android:layout_below="@+id/txtvwSpeed"
+        android:layout_toLeftOf="@+id/btnConnect" />
+
+    <TextView
+        android:id="@+id/txtvwTrain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/edtxtCustCommAddress"
+        android:layout_below="@+id/edtxtCustCommAddress"
+        android:layout_marginTop="36dp"
+        android:text="@string/selTrain" />
+
+    <Spinner
+        android:id="@+id/spnTrain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwTrain"
+        android:layout_below="@+id/txtvwTrain"
+        android:layout_toLeftOf="@+id/btnAdd" />
+
+    <TextView
+        android:id="@+id/txtvwStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btnConnect"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:id="@+id/btnConnect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btnSend"
+        android:layout_centerHorizontal="true"
+        android:text="@string/connect" />
+    
+    <TextView
+        android:id="@+id/txtvwCurrent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:text="@string/current" />
+
+    <ToggleButton
+        android:id="@+id/btnLoconet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/txtvwCurrent"
+        android:layout_alignTop="@+id/btnAdd"
+        android:textOff="Straight"
+        android:textOn="Diverge" />
+
+    <TextView
+        android:id="@+id/txtvwLocoCommand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/txtvwCurrent"
+        android:layout_alignBottom="@+id/txtvwCurrent"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:text="@string/locoCommand" />
+
+    <EditText
+        android:id="@+id/edtxtLocoOpcode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwLocoCommand"
+        android:layout_alignRight="@+id/txtvwLocoCommand"
+        android:layout_alignTop="@+id/chkbxRawComm"
+        android:ems="10"
+		android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintOpcode" >
+    </EditText>
+
+    <CheckBox
+        android:id="@+id/ckboxLocoRaw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/edtxtLocoOpcode"
+        android:layout_toRightOf="@+id/edtxtLocoOpcode"
+        android:text="@string/locoRaw" />
+
+    <EditText
+        android:id="@+id/edtxtLocoAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtLocoOpcode"
+        android:layout_toLeftOf="@+id/ckboxLocoRaw"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintAddress" />
+
+    <EditText
+        android:id="@+id/edtxtLocoComm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtLocoAdd"
+        android:layout_toRightOf="@+id/btnConnect"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/LocoCommHintCommand" />
+
+    <EditText
+        android:id="@+id/edtxtLocoChecksum"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/edtxtLocoComm"
+        android:layout_alignRight="@+id/edtxtLocoAdd"
+        android:layout_below="@+id/edtxtLocoComm"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/locochecksum" />
+
+    <Button
+        android:id="@+id/btnLocoSend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnSend"
+        android:layout_alignBottom="@+id/btnSend"
+        android:layout_alignLeft="@+id/edtxtLocoChecksum"
+        android:layout_alignRight="@+id/btnLoconet"
+        android:text="@string/locosend" />
+
+    <EditText
+        android:id="@+id/edtxtCustCommCommand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/edtxtCustCommAddress"
+        android:layout_toLeftOf="@+id/chkbxRawComm"
+        android:ems="10"
+        android:digits="0123456789ABCDEFabcdef"
+        android:hint="@string/CustCommHintCommand"
+        />
+
+    <CheckBox
+        android:id="@+id/chkbxRawComm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/edtxtCustCommCommand"
+        android:layout_toRightOf="@+id/edtxtCustCommAddress"
+        android:text="@string/rawCommand" />
+
+    <Button
+        android:id="@+id/btnDirection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/skbarSpeed"
+        android:layout_marginLeft="27dp"
+        android:layout_toRightOf="@+id/txtvwCommand"
+        android:text="@string/direction" />
+
+    <Button
+        android:id="@+id/btnAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/edtxtLocoChecksum"
+        android:layout_alignBottom="@+id/edtxtLocoChecksum"
+        android:layout_alignRight="@+id/skbarSpeed"
+        android:text="@string/add" />
+
+    <TextView
+        android:id="@+id/txtvwSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/edtxtLocoChecksum"
+        android:layout_below="@+id/edtxtLocoChecksum"
+        android:text="@string/selSwitch" />
+
+    <Spinner
+        android:id="@+id/spnSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/txtvwSwitch"
+        android:layout_below="@+id/txtvwSwitch"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@+id/btnLoconet" />
+
+    <Button
+        android:id="@+id/btnAddSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/spnSwitch"
+        android:layout_toRightOf="@+id/spnSwitch"
+        android:text="@string/add" />
+
+    <Button
+        android:id="@+id/btnSwitchPosition"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/ckboxLocoRaw"
+        android:layout_below="@+id/spnSwitch"
+        android:text="Button" />
+
+</RelativeLayout>

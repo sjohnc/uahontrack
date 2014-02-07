@@ -1,0 +1,10 @@
+1390259380626	Rename field 'btnCurrent'
+1390260892651	Extracts string 'null' into R.string.locoCommand
+1390260990275	Extracts string 'null' into R.string.locoRaw
+1390261231817	Rename field 'editText2'
+1390261258316	Rename field 'editText1'
+1390261460606	Rename field 'edtxtLocoAdd'
+1390261633181	Rename field 'edtxtLocoComm'
+1390261745660	Rename field 'EditText01'
+1390261810854	Extracts string 'null' into R.string.locochecksum
+1390680515455	Extracts string 'null' into R.string.selSwitch

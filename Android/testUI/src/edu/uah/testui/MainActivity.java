@@ -77,7 +77,7 @@ public class MainActivity extends Activity {
 	int[] switchAddress;
 	int trainIndex = 0; // current index to train array
 	int switchIndex = 0;
-	private static String address = null; // default address will be changed
+	private String address = null; // default address will be changed
 											// later in code
 	private static final UUID MY_UUID = UUID
 			.fromString("00001101-0000-1000-8000-00805F9B34FB"); // default
@@ -85,6 +85,7 @@ public class MainActivity extends Activity {
 																	// port
 																	// profile
 																	// UUID
+	private static final String TAG = "OnTrack";
 
 	Handler handler = new Handler();
 	Runnable currentRun = new Runnable() {
@@ -157,12 +158,69 @@ public class MainActivity extends Activity {
 
 	}
 
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		super.onPause();
-	}
-
+	 
+	  @Override
+	  public void onResume() {
+	    super.onResume();
+	  
+	    Log.d(TAG, "...onResume - try connect...");
+	    
+	    // Set up a pointer to the remote node using it's address.
+	    btDevice = btAdapter.getRemoteDevice(address);
+	    
+	    try {
+	        btSocket = btDevice
+					.createRfcommSocketToServiceRecord(MY_UUID);	    } 
+	    catch (IOException e1) {
+	        }
+	        
+	    // Discovery is resource intensive.  Make sure it isn't going on
+	    // when you attempt to connect and pass your message.
+	    btAdapter.cancelDiscovery();
+	    
+	    // Establish the connection.  This will block until it connects.
+	    Log.d(TAG, "...Connecting...");
+	    try {
+	      btSocket.connect();
+	      Log.d(TAG, "...Connection ok...");
+	    } catch (IOException e) {
+	      try {
+	        btSocket.close();
+	      } catch (IOException e2) {
+	       
+	      }
+	    }
+	      
+	    // Create a data stream so we can talk to server.
+	    Log.d(TAG, "...Create Socket...");
+	  
+	    try {
+	      btOutStream = btSocket.getOutputStream();
+	    } catch (IOException e) {
+	      
+	    }
+	  }
+	  
+	  @Override
+	  public void onPause() {
+	    super.onPause();
+	  
+	    Log.d(TAG, "...In onPause()...");
+	  
+	    if (btOutStream != null) {
+	      try {
+	    	  btOutStream.flush();
+	      } catch (IOException e) {
+	        
+	      }
+	    }
+	  
+	    try     {
+	      btSocket.close();
+	    } catch (IOException e2) {
+	      
+	    }
+	  }
 	@Override
 	protected void onStop() {
 		// TODO Auto-generated method stub
@@ -1086,12 +1144,15 @@ public class MainActivity extends Activity {
 			try {
 				btSocket.close();
 				btSocket = null;
+				btInStream.close();
+				btOutStream.close();
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			
 		}
-
+		
 		unregisterReceiver(bcastReceiver);
 		super.onDestroy();
 	}
