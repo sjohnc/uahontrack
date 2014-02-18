@@ -69,22 +69,24 @@ public class MainActivity extends Activity {
 	List<String> addressList; // string list to hold all bt device addresses
 	List<String> switchList; // string list for train names
 	ArrayAdapter<String> dataAdapter; // adapter for spinner and string list
-										// connection
+	// connection
 	ArrayAdapter<String> switchAdapter;
 	Scanner scan;
+	Thread currentThread = null;
+	boolean currentRunning = false;
 
 	int[] trainNum; // int array to hold train numbers
 	int[] switchAddress;
 	int trainIndex = 0; // current index to train array
 	int switchIndex = 0;
 	private String address = null; // default address will be changed
-											// later in code
+	// later in code
 	private static final UUID MY_UUID = UUID
 			.fromString("00001101-0000-1000-8000-00805F9B34FB"); // default
-																	// serial
-																	// port
-																	// profile
-																	// UUID
+	// serial
+	// port
+	// profile
+	// UUID
 	private static final String TAG = "OnTrack";
 
 	Handler handler = new Handler();
@@ -106,6 +108,7 @@ public class MainActivity extends Activity {
 	OutputStream btOutStream = null;
 	InputStream btInStream = null;
 	Boolean btconnected = false;
+	Boolean exitingNow = false;
 
 	BroadcastReceiver bcastReceiver = new BroadcastReceiver() {
 
@@ -119,6 +122,7 @@ public class MainActivity extends Activity {
 				// Device has disconnected
 				btconnected = false;
 				txtvwCurrent.setText("Disconnected");
+				currentRunning = false;
 				handler.removeCallbacks(currentRun);
 				try {
 					btSocket.close();
@@ -130,6 +134,7 @@ public class MainActivity extends Activity {
 			if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
 				btconnected = true;
 				txtvwCurrent.setText("Connected");
+				currentRunning = true;
 			}
 
 		}
@@ -147,6 +152,11 @@ public class MainActivity extends Activity {
 		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		getWindow().setSoftInputMode(
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		filters();
+
+	}
+
+	protected void filters() {
 		IntentFilter f1 = new IntentFilter(
 				BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED);
 		IntentFilter f2 = new IntentFilter(
@@ -155,72 +165,50 @@ public class MainActivity extends Activity {
 		this.registerReceiver(bcastReceiver, f1);
 		this.registerReceiver(bcastReceiver, f2);
 		this.registerReceiver(bcastReceiver, f3);
-
 	}
 
-	 
-	  @Override
-	  public void onResume() {
-	    super.onResume();
-	  
-	    Log.d(TAG, "...onResume - try connect...");
-	    
-	    // Set up a pointer to the remote node using it's address.
-	    btDevice = btAdapter.getRemoteDevice(address);
-	    
-	    try {
-	        btSocket = btDevice
-					.createRfcommSocketToServiceRecord(MY_UUID);	    } 
-	    catch (IOException e1) {
-	        }
-	        
-	    // Discovery is resource intensive.  Make sure it isn't going on
-	    // when you attempt to connect and pass your message.
-	    btAdapter.cancelDiscovery();
-	    
-	    // Establish the connection.  This will block until it connects.
-	    Log.d(TAG, "...Connecting...");
-	    try {
-	      btSocket.connect();
-	      Log.d(TAG, "...Connection ok...");
-	    } catch (IOException e) {
-	      try {
-	        btSocket.close();
-	      } catch (IOException e2) {
-	       
-	      }
-	    }
-	      
-	    // Create a data stream so we can talk to server.
-	    Log.d(TAG, "...Create Socket...");
-	  
-	    try {
-	      btOutStream = btSocket.getOutputStream();
-	    } catch (IOException e) {
-	      
-	    }
-	  }
-	  
-	  @Override
-	  public void onPause() {
-	    super.onPause();
-	  
-	    Log.d(TAG, "...In onPause()...");
-	  
-	    if (btOutStream != null) {
-	      try {
-	    	  btOutStream.flush();
-	      } catch (IOException e) {
-	        
-	      }
-	    }
-	  
-	    try     {
-	      btSocket.close();
-	    } catch (IOException e2) {
-	      
-	    }
-	  }
+	@Override
+	public void onResume() {
+		super.onResume();
+		if (currentThread == null) {
+			createCurrentThread();
+			currentThread.start();
+		}
+		Log.d(TAG, "...onResume - try connect...");
+
+		// Set up a pointer to the remote node using it's address.
+		/*if (address != null) {
+
+			new btmakeconnection().execute();
+
+		}*/
+	}
+
+	@Override
+	public void onPause() {
+		Log.d(TAG, "...In onPause()... thread is: " + currentThread.isAlive());
+		if (btOutStream != null) {
+			try {
+				btOutStream.flush();
+			} catch (IOException e) {
+
+			}
+		}
+		/*if (!exitingNow && btSocket != null)
+			try {
+				Log.d(TAG,
+						"Closing socket. thread is: " + currentThread.isAlive());
+				btSocket.close();
+				Log.d(TAG,
+						"Closed socket. thread is: " + currentThread.isAlive());
+			} catch (IOException e2) {
+				Log.d(TAG, "Closing socket exception caught thread is: "
+						+ currentThread.isAlive());
+			}*/
+
+		super.onPause();
+	}
+
 	@Override
 	protected void onStop() {
 		// TODO Auto-generated method stub
@@ -242,7 +230,7 @@ public class MainActivity extends Activity {
 								@Override
 								public void onClick(DialogInterface dialog,
 										int which) {
-
+									exitingNow = true;
 									// Stop the activity
 									MainActivity.this.finish();
 								}
@@ -340,8 +328,12 @@ public class MainActivity extends Activity {
 			handler.postDelayed(currentRun, 5000);
 			if (curTry >= maxTries)
 				txtvwStatus.setText("Connection Unsuccessful!");
-			else
+			else {
 				txtvwStatus.setText("Connection Successful!");
+				currentRunning = true;
+			}
+
+			filters();
 			super.onPostExecute(result);
 
 		}
@@ -487,7 +479,7 @@ public class MainActivity extends Activity {
 			trainNum[trainIndex] = i;
 			list.add("Train " + String.valueOf(trainNum[trainIndex]));
 			trainIndex++;
-			switchAddress[switchIndex] = i-1;
+			switchAddress[switchIndex] = i - 1;
 			switchList.add("Switch "
 					+ String.valueOf(switchAddress[switchIndex]));
 			switchIndex++;
@@ -504,12 +496,11 @@ public class MainActivity extends Activity {
 		dataAdapter
 				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnTrain.setAdapter(dataAdapter);
+
 	}
 
 	private void sendMessage(int address, int command, int checksum) {
-		/*
-		 * Currently only sets the custom text edit box to what should be sent.
-		 */
+
 		int dcc = 0;
 		txtvwStatus.setText("Sending... \" address# 0x"
 				+ Integer.toHexString(address) + " commandbits: 0x"
@@ -545,8 +536,8 @@ public class MainActivity extends Activity {
 	public void btnAddSwitchListener() {
 		final EditText input = new EditText(MainActivity.this);
 		if (switchIndex < MAX_SWITCHES) { // Checks to make sure the maximum
-											// number of trains hasn't been
-											// exceeded.
+			// number of trains hasn't been
+			// exceeded.
 			new AlertDialog.Builder(MainActivity.this)
 					.setTitle("Add A Switch")
 					.setMessage("Please input the switch address number")
@@ -584,21 +575,93 @@ public class MainActivity extends Activity {
 			txtvwStatus.setText("No more switches allowed.");
 	}
 
+	private void createCurrentThread() {
+		currentThread = new Thread(new Runnable() {
+			public void run() {
+				boolean excep = false;
+				while (!excep) {
+					if (currentRunning && btSocket != null) {
+						// Keep listening to the InputStream until an exception
+						// occurs
+						// receive thread should look at first byte of the message.
+						// depending on first byte it should either prepare to receive
+						// current data, or location/imu data.
+						// so it check available, read the first byte, switch on that byte
+						// waiting on the correct number of bytes to be available for that type
+						// it should then put that incoming message into a buffer to be worked on
+						// and raise a flag or spawn a worker thread.
+					
+						try {
+							btInStream = btSocket.getInputStream();
+							int bytes = 0;
+							bytes = btInStream.available();
+							byte[] inbuffer = new byte[bytes];
+							
+							if (btconnected && btInStream != null && bytes >= 2) {
+
+								Log.d("OnTrack",
+										"Current: before read Bytes avail: "
+												+ String.valueOf(bytes));
+
+								Log.d("OnTrack", "Current: reading now.");
+
+								Log.d("OnTrack", "Current: before read");
+								btInStream.read(inbuffer, 0, 2);
+								int current = (inbuffer[0] & 0xff);
+								current = current << 8;
+								current = current & 0xff00;
+								current = current | (inbuffer[1] & 0xff);
+								current = current & 0xffff;
+								current = (int) (current * 4.296);
+								final int update = current;
+								txtvwCurrent.post(new Runnable() {
+
+									@Override
+									public void run() {
+										txtvwCurrent.setText(String
+												.valueOf(update) + " mA");
+									}
+								});
+								Log.d("OnTrack",
+										"Current: " + String.valueOf(current)
+												+ " mA");
+								Log.d("OnTrack",
+										"Current: byte1 :"
+												+ Integer
+														.toHexString(inbuffer[0])
+												+ " byte 2: "
+												+ Integer
+														.toHexString(inbuffer[1] & 0xff));
+
+							}
+
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							excep = true;
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+		});
+
+	}
+
 	public void btnSendListener() {
 		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-																			// to
-																			// see
-																			// if
-																			// it
-																			// is
-																			// not
-																			// null,
-																			// then
-																			// see
-																			// if
-																			// it
-																			// is
-																			// connected.
+			// to
+			// see
+			// if
+			// it
+			// is
+			// not
+			// null,
+			// then
+			// see
+			// if
+			// it
+			// is
+			// connected.
 			// testing one more time.
 			int address = 0;
 			int speed = 0;
@@ -656,7 +719,7 @@ public class MainActivity extends Activity {
 
 				if (btnDirection.getText() == "Forward")
 					commandbits ^= 96; // 64 is for the 01 in the packet format
-										// 32 for the forward direction
+				// 32 for the forward direction
 				else
 					commandbits ^= 64;
 			}
@@ -674,7 +737,7 @@ public class MainActivity extends Activity {
 
 		final EditText input = new EditText(MainActivity.this);
 		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
-										// of trains hasn't been exceeded.
+			// of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
 					.setTitle("Add A Train")
 					.setMessage("Please input the train number")
@@ -719,7 +782,7 @@ public class MainActivity extends Activity {
 			Log.d("OnTrack", "Current: connection is good!");
 			byte[] outbuffer = new byte[1];
 			outbuffer[0] = (byte) (3 & 0xff);
-			byte[] inbuffer = new byte[2];
+			// byte[] inbuffer = new byte[2];
 			try {
 				btInStream = btSocket.getInputStream();
 				btOutStream = btSocket.getOutputStream();
@@ -735,32 +798,23 @@ public class MainActivity extends Activity {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			while (btconnected && btInStream != null
-					&& btInStream.available() >= 2) {
-				Log.d("OnTrack", "Current: reading now.");
-				try {
-					Log.d("OnTrack", "Current: before read");
-					btInStream.read(inbuffer, 0, 2);
-					int current = (inbuffer[0] & 0xff);
-					current = current << 8;
-					current = current & 0xff00;
-					current = current | (inbuffer[1] & 0xff);
-					current = current & 0xffff;
-					current = (int) (current * 4.296);
-
-					txtvwCurrent.setText(String.valueOf(current) + " mA");
-					Log.d("OnTrack", "Current: " + String.valueOf(current)
-							+ " mA");
-					Log.d("OnTrack",
-							"Current: byte1 :"
-									+ Integer.toHexString(inbuffer[0])
-									+ " byte 2: "
-									+ Integer.toHexString(inbuffer[1] & 0xff));
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+			/*
+			 * while (btconnected && btInStream != null &&
+			 * btInStream.available() >= 2) { Log.d("OnTrack",
+			 * "Current: reading now."); try { Log.d("OnTrack",
+			 * "Current: before read"); btInStream.read(inbuffer, 0, 2); int
+			 * current = (inbuffer[0] & 0xff); current = current << 8; current =
+			 * current & 0xff00; current = current | (inbuffer[1] & 0xff);
+			 * current = current & 0xffff; current = (int) (current * 4.296);
+			 * 
+			 * txtvwCurrent.setText(String.valueOf(current) + " mA");
+			 * Log.d("OnTrack", "Current: " + String.valueOf(current) + " mA");
+			 * Log.d("OnTrack", "Current: byte1 :" +
+			 * Integer.toHexString(inbuffer[0]) + " byte 2: " +
+			 * Integer.toHexString(inbuffer[1] & 0xff));
+			 * 
+			 * } catch (IOException e) { e.printStackTrace(); } }
+			 */
 		}
 
 	}
@@ -776,19 +830,19 @@ public class MainActivity extends Activity {
 		byte[] outbuffer = new byte[6];
 
 		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-																			// to
-																			// see
-																			// if
-																			// it
-																			// is
-																			// not
-																			// null,
-																			// then
-																			// see
-																			// if
-																			// it
-																			// is
-																			// connected.
+			// to
+			// see
+			// if
+			// it
+			// is
+			// not
+			// null,
+			// then
+			// see
+			// if
+			// it
+			// is
+			// connected.
 			if (edtxtLocoOpCode.getText().length() > 0
 					&& edtxtLocoAddress.getText().length() > 0
 					&& edtxtLocoCommand.getText().length() > 0
@@ -846,19 +900,19 @@ public class MainActivity extends Activity {
 
 	private void btnLoconetHardCoded() {
 		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-																			// to
-																			// see
-																			// if
-																			// it
-																			// is
-																			// not
-																			// null,
-																			// then
-																			// see
-																			// if
-																			// it
-																			// is
-																			// connected.
+			// to
+			// see
+			// if
+			// it
+			// is
+			// not
+			// null,
+			// then
+			// see
+			// if
+			// it
+			// is
+			// connected.
 			if (btnLoconet.getText().toString() == "Diverge") {
 				int loconet = 0x01;
 				int opcode = 0xb0;
@@ -1126,33 +1180,44 @@ public class MainActivity extends Activity {
 	protected void onDestroy() {
 		// TODO Auto-generated method stub
 		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-																			// to
-																			// see
-																			// if
-																			// it
-																			// is
-																			// not
-																			// null,
-																			// then
-																			// see
-																			// if
-																			// it
-																			// is
-																			// connected.
+			// to
+			// see
+			// if
+			// it
+			// is
+			// not
+			// null,
+			// then
+			// see
+			// if
+			// it
+			// is
+			// connected.
 			sendMessage(0, 0, 0);
+			try {
+				btOutStream.flush();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 			handler.removeCallbacks(currentRun);
 			try {
+				currentRunning = false;
+				Thread.sleep(5);
 				btSocket.close();
 				btSocket = null;
 				btInStream.close();
 				btOutStream.close();
-				
+
 			} catch (IOException e) {
 				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			
+
 		}
-		
+
 		unregisterReceiver(bcastReceiver);
 		super.onDestroy();
 	}
