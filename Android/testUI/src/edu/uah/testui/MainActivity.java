@@ -43,6 +43,9 @@ public class MainActivity extends Activity {
 
 	final int MAX_TRAINS = 10;
 	final int MAX_SWITCHES = 10;
+	final int MAX_BUFFER = 10;
+	final int IMU_DATA_SIZE = 44;
+	final int CURRENT_DATA_SIZE = 2;
 
 	EditText edtxtCustomCommAdd; // edit text for custom address
 	EditText edtxtCustomCommCommand; // edit text for custom speed
@@ -77,6 +80,10 @@ public class MainActivity extends Activity {
 
 	int[] trainNum; // int array to hold train numbers
 	int[] switchAddress;
+	byte[][] currentBuffer = new byte[MAX_BUFFER][CURRENT_DATA_SIZE];
+	byte[][][] imuBuffer = new byte[MAX_BUFFER][MAX_TRAINS][IMU_DATA_SIZE];
+	int currentBufferIndex = 0;
+	int imuBufferIndex = 0;
 	int trainIndex = 0; // current index to train array
 	int switchIndex = 0;
 	private String address = null; // default address will be changed
@@ -221,21 +228,21 @@ public class MainActivity extends Activity {
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			// Ask the user if they want to quit
 			new AlertDialog.Builder(this)
-					.setIcon(android.R.drawable.ic_dialog_alert)
-					.setTitle(R.string.quit)
-					.setMessage(R.string.really_quit)
-					.setPositiveButton(R.string.yes,
-							new DialogInterface.OnClickListener() {
+			.setIcon(android.R.drawable.ic_dialog_alert)
+			.setTitle(R.string.quit)
+			.setMessage(R.string.really_quit)
+			.setPositiveButton(R.string.yes,
+					new DialogInterface.OnClickListener() {
 
-								@Override
-								public void onClick(DialogInterface dialog,
-										int which) {
-									exitingNow = true;
-									// Stop the activity
-									MainActivity.this.finish();
-								}
+				@Override
+				public void onClick(DialogInterface dialog,
+						int which) {
+					exitingNow = true;
+					// Stop the activity
+					MainActivity.this.finish();
+				}
 
-							}).setNegativeButton(R.string.no, null).show();
+			}).setNegativeButton(R.string.no, null).show();
 
 			return true;
 		} else {
@@ -277,27 +284,27 @@ public class MainActivity extends Activity {
 			builderSingle.setNegativeButton("cancel",
 					new DialogInterface.OnClickListener() {
 
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							dialog.dismiss();
-						}
-					});
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.dismiss();
+				}
+			});
 
 			builderSingle.setAdapter(arrayAdapter,
 					new DialogInterface.OnClickListener() {
 
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							if (addressList.get(which) == "Add new") {
-								Intent intentBluetooth = new Intent();
-								intentBluetooth
-										.setAction(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
-								startActivity(intentBluetooth);
-							}
-							address = addressList.get(which);
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					if (addressList.get(which) == "Add new") {
+						Intent intentBluetooth = new Intent();
+						intentBluetooth
+						.setAction(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+						startActivity(intentBluetooth);
+					}
+					address = addressList.get(which);
 
-						}
-					});
+				}
+			});
 			builderSingle.show();
 			txtvwStatus.setText("Connecting to Bluetooth, please wait...");
 		}
@@ -488,13 +495,13 @@ public class MainActivity extends Activity {
 		switchAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_spinner_item, switchList);
 		switchAdapter
-				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnSwitch.setAdapter(switchAdapter);
 
 		dataAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_spinner_item, list);
 		dataAdapter
-				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnTrain.setAdapter(dataAdapter);
 
 	}
@@ -539,38 +546,38 @@ public class MainActivity extends Activity {
 			// number of trains hasn't been
 			// exceeded.
 			new AlertDialog.Builder(MainActivity.this)
-					.setTitle("Add A Switch")
-					.setMessage("Please input the switch address number")
-					.setView(input)
-					.setPositiveButton("Ok",
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int whichButton) {
-									int value;
-									try {
-										value = Integer.parseInt(input
-												.getText().toString());
-										if (value >= 0 && value <= 127) {
-											switchAddress[switchIndex] = value;
-											switchIndex++;
-											switchList.add("Switch " + value);
-										} else
-											txtvwStatus
-													.setText("Switch out of range.");
-									} catch (NumberFormatException nfe) {
-										System.out.println("Could not parse "
-												+ nfe);
-									}
+			.setTitle("Add A Switch")
+			.setMessage("Please input the switch address number")
+			.setView(input)
+			.setPositiveButton("Ok",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					int value;
+					try {
+						value = Integer.parseInt(input
+								.getText().toString());
+						if (value >= 0 && value <= 127) {
+							switchAddress[switchIndex] = value;
+							switchIndex++;
+							switchList.add("Switch " + value);
+						} else
+							txtvwStatus
+							.setText("Switch out of range.");
+					} catch (NumberFormatException nfe) {
+						System.out.println("Could not parse "
+								+ nfe);
+					}
 
-								}
-							})
-					.setNegativeButton("Cancel",
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int whichButton) {
-									// Do nothing.
-								}
-							}).show();
+				}
+			})
+			.setNegativeButton("Cancel",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					// Do nothing.
+				}
+			}).show();
 		} else
 			txtvwStatus.setText("No more switches allowed.");
 	}
@@ -590,48 +597,34 @@ public class MainActivity extends Activity {
 						// waiting on the correct number of bytes to be available for that type
 						// it should then put that incoming message into a buffer to be worked on
 						// and raise a flag or spawn a worker thread.
-					
+
 						try {
-							btInStream = btSocket.getInputStream();
-							int bytes = 0;
-							bytes = btInStream.available();
-							byte[] inbuffer = new byte[bytes];
-							
-							if (btconnected && btInStream != null && bytes >= 2) {
 
-								Log.d("OnTrack",
-										"Current: before read Bytes avail: "
-												+ String.valueOf(bytes));
+							if (btconnected && btInStream != null) {
+								byte[] inbuffer = null;
+								btInStream = btSocket.getInputStream();
+								int bytes = 0;
+								bytes = btInStream.available();
+								if(bytes > 0)
+								{
 
-								Log.d("OnTrack", "Current: reading now.");
+									Log.d("OnTrack", "Received message.");
+									if(bytes >= CURRENT_DATA_SIZE){
+										inbuffer = new byte[bytes];
+									
+										btInStream.read(inbuffer, 0, bytes);
 
-								Log.d("OnTrack", "Current: before read");
-								btInStream.read(inbuffer, 0, 2);
-								int current = (inbuffer[0] & 0xff);
-								current = current << 8;
-								current = current & 0xff00;
-								current = current | (inbuffer[1] & 0xff);
-								current = current & 0xffff;
-								current = (int) (current * 4.296);
-								final int update = current;
-								txtvwCurrent.post(new Runnable() {
-
-									@Override
-									public void run() {
-										txtvwCurrent.setText(String
-												.valueOf(update) + " mA");
+										//switch on inbuffer[0] should go here
+										currentBuffer[currentBufferIndex % MAX_BUFFER][0] = inbuffer[0];
+										currentBuffer[currentBufferIndex % MAX_BUFFER][1] = inbuffer[1];
+										currentBufferIndex++;
+										//spawn current calc thread.
+										if(currentBufferIndex >= MAX_BUFFER)
+											updateCurrent();
 									}
-								});
-								Log.d("OnTrack",
-										"Current: " + String.valueOf(current)
-												+ " mA");
-								Log.d("OnTrack",
-										"Current: byte1 :"
-												+ Integer
-														.toHexString(inbuffer[0])
-												+ " byte 2: "
-												+ Integer
-														.toHexString(inbuffer[1] & 0xff));
+								}
+
+
 
 							}
 
@@ -642,6 +635,31 @@ public class MainActivity extends Activity {
 						}
 					}
 				}
+			}
+		});
+
+	}
+
+	private void updateCurrent(){
+		int current[] = new int[MAX_BUFFER];
+		int sum = 0;
+		Log.d("OnTrack", "Current: being calc");
+		for(int i = 0; i < MAX_BUFFER; i++){
+			current[i] = (currentBuffer[i][0] & 0xff);
+			current[i] = current[i] << 8;
+			current[i] = current[i] & 0xff00;
+			current[i] = current[i] | (currentBuffer[i][1] & 0xff);
+			current[i] = current[i] & 0xffff;
+			current[i] = (int) (current[i] * 4.296);
+			sum += current[i];
+		}
+		final double update = (double)sum/(double)MAX_BUFFER;
+		txtvwCurrent.post(new Runnable() {
+
+			@Override
+			public void run() {
+				txtvwCurrent.setText(String
+						.valueOf(update) + " mA");
 			}
 		});
 
@@ -739,38 +757,38 @@ public class MainActivity extends Activity {
 		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
 			// of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
-					.setTitle("Add A Train")
-					.setMessage("Please input the train number")
-					.setView(input)
-					.setPositiveButton("Ok",
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int whichButton) {
-									int value;
-									try {
-										value = Integer.parseInt(input
-												.getText().toString());
-										if (value >= 0 && value <= 127) {
-											trainNum[trainIndex] = value;
-											trainIndex++;
-											list.add("Train " + value);
-										} else
-											txtvwStatus
-													.setText("Train out of range.");
-									} catch (NumberFormatException nfe) {
-										System.out.println("Could not parse "
-												+ nfe);
-									}
+			.setTitle("Add A Train")
+			.setMessage("Please input the train number")
+			.setView(input)
+			.setPositiveButton("Ok",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					int value;
+					try {
+						value = Integer.parseInt(input
+								.getText().toString());
+						if (value >= 0 && value <= 127) {
+							trainNum[trainIndex] = value;
+							trainIndex++;
+							list.add("Train " + value);
+						} else
+							txtvwStatus
+							.setText("Train out of range.");
+					} catch (NumberFormatException nfe) {
+						System.out.println("Could not parse "
+								+ nfe);
+					}
 
-								}
-							})
-					.setNegativeButton("Cancel",
-							new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog,
-										int whichButton) {
-									// Do nothing.
-								}
-							}).show();
+				}
+			})
+			.setNegativeButton("Cancel",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					// Do nothing.
+				}
+			}).show();
 		} else
 			txtvwStatus.setText("No more trains allowed.");
 	}
@@ -858,7 +876,7 @@ public class MainActivity extends Activity {
 						.toString(), 16);
 			} else {
 				simpleSwitchAddress = switchAddress[spnSwitch
-						.getSelectedItemPosition()];
+				                                    .getSelectedItemPosition()];
 				address = simpleSwitchAddress & 0x7f;
 				command = ((simpleSwitchAddress >> 7) & 0x0f);
 				if (btnSwitchPosition.getText().toString() == "Straight")
@@ -1094,28 +1112,28 @@ public class MainActivity extends Activity {
 		});
 
 		skbarSpeed
-				.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+		.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
-					@Override
-					public void onStopTrackingTouch(SeekBar seekBar) {
-						if (btconnected && btSocket != null
-								&& btSocket.isConnected())
-							btnSendListener();
-					}
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) {
+				if (btconnected && btSocket != null
+						&& btSocket.isConnected())
+					btnSendListener();
+			}
 
-					@Override
-					public void onStartTrackingTouch(SeekBar seekBar) {
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) {
 
-					}
+			}
 
-					@Override
-					public void onProgressChanged(SeekBar seekBar,
-							int progress, boolean fromUser) {
-						if (btconnected && btSocket != null
-								&& btSocket.isConnected())
-							btnSendListener();
-					}
-				});
+			@Override
+			public void onProgressChanged(SeekBar seekBar,
+					int progress, boolean fromUser) {
+				if (btconnected && btSocket != null
+						&& btSocket.isConnected())
+					btnSendListener();
+			}
+		});
 
 		chkbxRawComm.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
