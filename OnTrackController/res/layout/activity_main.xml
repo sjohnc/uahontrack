@@ -1,0 +1,121 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context=".MainActivity" >
+
+    <RelativeLayout
+        android:id="@+id/controlsLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentRight="true"
+        android:layout_toRightOf="@+id/displayLayout" >
+
+        <edu.uah.ontrackcontroller.VerticalSeekBar
+            android:id="@+id/vertSeekBar"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:max="64"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true" />
+
+        <Button
+            android:id="@+id/btnAddTrain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentTop="true"
+            android:text="@string/add" />
+
+        <TextView
+            android:id="@+id/txtvwTrainTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@+id/btnAddTrain"
+            android:layout_alignBottom="@+id/btnAddTrain"
+            android:layout_toRightOf="@+id/btnAddTrain"
+            android:text="@string/trainTitle" />
+
+        <Spinner
+            android:id="@+id/spnTrainSelect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/btnAddTrain" />
+
+        <Button
+            android:id="@+id/btnAddSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/spnTrainSelect"
+            android:text="@string/add" />
+
+        <TextView
+            android:id="@+id/txtvwSwitchSelect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@+id/btnAddSwitch"
+            android:layout_alignBottom="@+id/btnAddSwitch"
+            android:layout_toRightOf="@+id/btnAddSwitch"
+            android:text="@string/selSwitch" />
+
+        <Spinner
+            android:id="@+id/spnSwitchSel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/btnAddSwitch" />
+
+        <ToggleButton
+            android:id="@+id/tglbtnSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:textOn="@string/straight"
+            android:textOff="@string/divert"
+            android:layout_below="@+id/spnSwitchSel"/>
+
+        <TextView
+            android:id="@+id/txtvwStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:text="TextView" />
+
+        <Button
+            android:id="@+id/btnLights"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/txtvwStatus"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="21dp"
+            android:text="@string/lights" />
+
+        <Button
+            android:id="@+id/btnSound"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/btnLights"
+            android:layout_alignLeft="@+id/btnLights"
+            android:layout_marginBottom="10dp"
+            android:text="@string/sound" />
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:id="@+id/displayLayout"
+        android:layout_width="1050dp"
+        android:layout_height="700dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentTop="true"
+		android:layout_alignParentLeft="true"
+        android:orientation="vertical" >
+
+
+    </LinearLayout>
+
+</RelativeLayout>
