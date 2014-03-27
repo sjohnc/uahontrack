@@ -1,0 +1,61 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context=".MainActivity" >
+
+    <RelativeLayout
+        android:id="@+id/relLayout_Track"
+        android:layout_width="1050dp"
+        android:layout_height="700dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:tag="relLayout_Track"
+        android:orientation="vertical" >
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/relLayout_Tray"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:tag="tray"
+        android:layout_toRightOf="@+id/relLayout_Track" >
+
+        <ImageView
+            android:id="@+id/imgViewBarcodes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginLeft="76dp"
+            android:layout_marginTop="96dp"
+            android:src="@android:drawable/btn_star" />
+
+        <ImageView
+            android:id="@+id/imgViewSwitches"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignRight="@+id/imgViewTrains"
+            android:layout_below="@+id/imgViewTrains"
+            android:layout_marginTop="36dp"
+            android:src="@drawable/football" />
+
+        <ImageView
+            android:id="@+id/imgViewTrains"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/imgViewBarcodes"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="144dp"
+            android:src="@drawable/train1" />
+
+    </RelativeLayout>
+
+</RelativeLayout>
