@@ -27,6 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
+            android:visibility="invisible"
             android:text="@string/add" />
 
         <TextView
@@ -51,6 +52,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_below="@+id/spnTrainSelect"
+            android:visibility="invisible"
             android:text="@string/add" />
 
         <TextView
@@ -105,12 +107,78 @@
             android:layout_marginBottom="25dp"
             android:text="@string/sound" />
 
+        <EditText
+            android:id="@+id/edtxtTieCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignRight="@+id/btnSound"
+            android:layout_below="@+id/tglbtnSwitch"
+            android:layout_marginTop="52dp"
+            android:ems="10"
+            android:inputType="number" >
+
+            <requestFocus />
+        </EditText>
+
+        <EditText
+            android:id="@+id/edtxtAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignLeft="@+id/edtxtTieCount"
+            android:layout_below="@+id/edtxtTieCount"
+            android:layout_marginTop="34dp"
+            android:ems="10"
+            android:inputType="number" />
+
+        <TextView
+            android:id="@+id/txtViewTieCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@+id/edtxtTieCount"
+            android:layout_alignBottom="@+id/edtxtTieCount"
+            android:layout_toLeftOf="@+id/edtxtTieCount"
+            android:text="TieCount" />
+
+        <TextView
+            android:id="@+id/txtViewAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/edtxtAngle"
+            android:layout_alignLeft="@+id/txtViewTieCount"
+            android:text="Angle" />
+
+        <Button
+            android:id="@+id/btnBarcode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/btnSound"
+            android:layout_marginLeft="30dp"
+            android:layout_toRightOf="@+id/btnSound"
+            android:text="Rezero" />
+
+        <EditText
+            android:id="@+id/edtxtBarCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/tglbtnSwitch"
+            android:layout_toLeftOf="@+id/btnBarcode"
+            android:ems="10"
+            android:inputType="number" />
+
+        <TextView
+            android:id="@+id/txtvwBarCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/edtxtBarCode"
+            android:layout_alignRight="@+id/txtViewTieCount"
+            android:text="Barcode" />
+
     </RelativeLayout>
 
     <RelativeLayout
         android:id="@+id/relLayout_Track"
-        android:layout_width="750sp"
-        android:layout_height="400sp"
+        android:layout_width="950dp"
+        android:layout_height="600dp"
         android:background="@drawable/rellayout_track"
         android:tag="relLayout_Track"
         android:layout_alignParentTop="true"
@@ -120,7 +188,7 @@
     </RelativeLayout>
     <RelativeLayout
         android:id="@+id/relLayout_Tray"
-        android:layout_width="750dp"
+        android:layout_width="1050dp"
         android:layout_height="75dp"
         android:layout_alignParentBottom="true"
         android:tag="tray"

@@ -44,6 +44,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.RelativeLayout.LayoutParams;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -51,6 +54,7 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -107,6 +111,9 @@ public class MainActivity extends Activity {
 	int switchIndex = 0;
 	int barcodeIndex = 0;
 	int imuBufferIndex = 0;
+	int trainLayoutHeight = 0;
+	int trainLayoutWidth = 0;
+	double trainLayoutScale = 0;
 
 	TextDrawable txtDrawNumber;
 	Drawable train_background;
@@ -129,11 +136,17 @@ public class MainActivity extends Activity {
 	ImageView imgViewSwitches;
 	ImageView imgViewTrains;
 
+	TextView txtvwStatus;
 	// connecting Layout's to these two objects
 	RelativeLayout relLayout_Track;
 	RelativeLayout relLayout_Tray;
 
 	Button btnConnect;
+	Button btnIMU;
+	Button btnRezero;
+	EditText edtxtTieCount;
+	EditText edtxtAngle;
+	EditText edtxtBarCode;
 	ToggleButton tglbtnSwitch;
 	VerticalSeekBar vertSeekBar;
 	Spinner spnTrain; // spinner for train selection
@@ -146,7 +159,6 @@ public class MainActivity extends Activity {
 	final String TAG_BARCODES = "barcode";
 	final String TAG_SWITCHES = "switch";
 	final String TAG_TRAINS = "train";
-	
 
 	// BlueTooth variables
 	BluetoothAdapter btAdapter = null; // start all BT items as null to start.
@@ -169,7 +181,7 @@ public class MainActivity extends Activity {
 			if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
 				// Device has disconnected
 				btconnected = false;
-				// txtvwCurrent.setText("Disconnected");
+				txtvwStatus.setText("Disconnected");
 				currentRunning = false;
 				// handler.removeCallbacks(currentRun);
 				try {
@@ -182,6 +194,14 @@ public class MainActivity extends Activity {
 			if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
 				btconnected = true;
 				Log.d(TAG_DEBUG, "Connected");
+				txtvwStatus.setText("Connected");
+				try {
+					btInStream = btSocket.getInputStream();
+					btOutStream = btSocket.getOutputStream();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				currentRunning = true;
 			}
 
@@ -204,16 +224,6 @@ public class MainActivity extends Activity {
 		}
 
 	}
-
-	/*
-	 * final View.OnClickListener myClickListener = new View.OnClickListener() {
-	 * 
-	 * @Override public void onClick(View clickedView) { image_view
-	 * touchedObject = (image_view) clickedView;
-	 * 
-	 * 
-	 * } };
-	 */
 
 	final View.OnTouchListener touchListener = new View.OnTouchListener() {
 
@@ -307,7 +317,7 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Void result) {
 			new btmakeconnection().execute();
-
+			txtvwStatus.setText("Connecting...");
 			super.onPostExecute(result);
 
 		}
@@ -330,10 +340,11 @@ public class MainActivity extends Activity {
 			// handler.postDelayed(currentRun, 5000);
 			if (curTry >= maxTries) {
 				Log.d(TAG_DEBUG, "failed to connect");
-				// txtvwStatus.setText("Connection Unsuccessful!");
+				txtvwStatus.setText("Connection Unsuccessful!");
 			} else {
-				// txtvwStatus.setText("Connection Successful!");
+				txtvwStatus.setText("Connection Successful!");
 				currentRunning = true;
+				
 			}
 
 			// filters();
@@ -418,9 +429,7 @@ public class MainActivity extends Activity {
 
 		@Override
 		public void draw(Canvas canvas) {
-			canvas.drawText(text, px / 2,
-					px / 2 + textSize / 4,
-					paint);
+			canvas.drawText(text, px / 2, px / 2 + textSize / 4, paint);
 		}
 
 		@Override
@@ -446,6 +455,7 @@ public class MainActivity extends Activity {
 
 		public String myType;
 		public int myIndex;
+		public int myState;
 
 		public image_view(Context context) {
 			super(context);
@@ -455,6 +465,14 @@ public class MainActivity extends Activity {
 
 		void setMyIndex(int myID) {
 			myIndex = myID;
+		}
+
+		void setMyState(int state) {
+			myState = state;
+		}
+
+		int getMyState() {
+			return myState;
 		}
 
 		int getMyIndex() {
@@ -498,7 +516,6 @@ public class MainActivity extends Activity {
 	 */
 	private void connectWidgets() {
 
-		
 		// Drawables
 		train_background = (Drawable) getResources().getDrawable(
 				R.drawable.trainback);
@@ -514,17 +531,15 @@ public class MainActivity extends Activity {
 				R.drawable.barcodefront);
 
 		// ImageViews
-		px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-				30, getResources().getDisplayMetrics());
-		
+		px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30,
+				getResources().getDisplayMetrics());
+
 		imgViewBarcodes = (ImageView) findViewById(R.id.imgViewBarcodes);
 		imgViewBarcodes.setTag(TAG_BARCODES);
 		imgViewBarcodes.setMinimumHeight(px);
 		imgViewBarcodes.setMinimumWidth(px);
 		imgViewBarcodes.setMaxHeight(px);
 		imgViewBarcodes.setMaxWidth(px);
-		
-		
 
 		imgViewSwitches = (ImageView) findViewById(R.id.imgViewSwitches);
 		imgViewSwitches.setTag(TAG_SWITCHES);
@@ -542,12 +557,19 @@ public class MainActivity extends Activity {
 
 		// Buttons
 		btnConnect = (Button) findViewById(R.id.btnConnect);
+		btnIMU = (Button) findViewById(R.id.btnSound);
+		btnRezero = (Button) findViewById(R.id.btnBarcode);
+		btnIMU.setText("IMU Test");
+		edtxtBarCode = (EditText) findViewById(R.id.edtxtBarCode);
+		edtxtAngle = (EditText) findViewById(R.id.edtxtAngle);
+		edtxtTieCount = (EditText) findViewById(R.id.edtxtTieCount);
 		vertSeekBar = (VerticalSeekBar) findViewById(R.id.vertSeekBar);
 		vertSeekBar.setMax((speedArray.length - 1) * 2);
 		vertSeekBar.setProgress(speedArray.length);
 		tglbtnSwitch = (ToggleButton) findViewById(R.id.tglbtnSwitch);
 		spnTrain = (Spinner) findViewById(R.id.spnTrainSelect);
 		spnSwitch = (Spinner) findViewById(R.id.spnSwitchSel);
+		txtvwStatus = (TextView)findViewById(R.id.txtvwStatus);
 
 		// Layouts
 		relLayout_Track = (RelativeLayout) findViewById(R.id.relLayout_Track);
@@ -579,6 +601,73 @@ public class MainActivity extends Activity {
 				new BTConnect().execute();
 
 			}
+		});
+		btnRezero.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				if (edtxtBarCode.getText().toString().length() != 0) {
+					int barcode = Integer.parseInt(edtxtBarCode.getText()
+							.toString());
+					int trainID = train_list[spnTrain.getSelectedItemPosition()]
+							.getMyIndex();
+					// if (trainAddress[trainID] != NOT_VALID)
+					barCodeReZero(trainID, barcode);
+				}
+			}
+		});
+		btnIMU.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				if (edtxtAngle.getText().toString().length() != 0
+						&& edtxtTieCount.getText().toString().length() != 0) {
+					int trainID = train_list[spnTrain.getSelectedItemPosition()]
+							.getMyIndex();
+					// if (trainNum[trainID] != NOT_VALID) {
+					int tieCount = Integer.parseInt(edtxtTieCount.getText()
+							.toString());
+
+					int angle = Integer.parseInt(edtxtAngle.getText()
+							.toString());
+					updateTrain(trainID, tieCount, 0, 0, angle, 0);
+					// }
+				}
+			}
+		});
+		spnTrain.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+			@Override
+			public void onItemSelected(AdapterView<?> parentView,
+					View selectedView, int pos, long id) {
+				vertSeekBar.setProgressAndThumb(train_list[pos].myState);
+
+			}
+
+			@Override
+			public void onNothingSelected(AdapterView<?> arg0) {
+				// nothing selected
+			}
+
+		});
+		spnSwitch.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+			@Override
+			public void onItemSelected(AdapterView<?> parentView,
+					View selectedView, int pos, long id) {
+				if (switch_list[pos].myState == 0)
+					tglbtnSwitch.setChecked(false);
+				else
+					tglbtnSwitch.setChecked(true);
+
+			}
+
+			@Override
+			public void onNothingSelected(AdapterView<?> arg0) {
+				// nothing selected
+
+			}
+
 		});
 		tglbtnSwitch.setOnClickListener(new View.OnClickListener() {
 
@@ -644,6 +733,8 @@ public class MainActivity extends Activity {
 						final image_view inLayout = (image_view) dragEvent
 								.getLocalState();
 						inLayout.setLayoutParams(params);
+						inLayout.setLeft(params.leftMargin);
+						inLayout.setTop(params.topMargin);
 						Toast.makeText(
 								getBaseContext(),
 								inLayout.getType() + " "
@@ -665,6 +756,8 @@ public class MainActivity extends Activity {
 
 					@Override
 					public void onStopTrackingTouch(SeekBar seekBar) {
+						train_list[spnTrain.getSelectedItemPosition()]
+								.setMyState(vertSeekBar.getProgress());
 						if (btconnected && btSocket != null
 								&& btSocket.isConnected())
 							dccMessagePrepAndSend();
@@ -811,7 +904,10 @@ public class MainActivity extends Activity {
 														getBaseContext());
 												switch_list[switchIndex]
 														.setLayoutParams(params);
-
+												switch_list[switchIndex]
+														.setLeft(params.leftMargin);
+												switch_list[switchIndex]
+														.setTop(params.topMargin);
 												setSwitchImage(
 														getBaseContext(),
 														value, switchIndex);
@@ -821,11 +917,14 @@ public class MainActivity extends Activity {
 												switch_list[switchIndex]
 														.setMyIndex(value);
 												switch_list[switchIndex]
+														.setMyState(0);
+												switch_list[switchIndex]
 														.setMyType("switch");
 												switch_list[switchIndex]
 														.setOnLongClickListener(longClickListener);
 												switch_list[switchIndex]
 														.setTag(tag);
+
 												switch_list[switchIndex]
 														.setOnTouchListener(touchListener);
 												relLayout_Track
@@ -853,6 +952,7 @@ public class MainActivity extends Activity {
 														.notifyDataSetChanged();
 												spnSwitch
 														.setSelection(switchIndex);
+												// locoNetMessagePrepAndSend();
 											} else {
 												Toast.makeText(
 														getBaseContext(),
@@ -897,7 +997,7 @@ public class MainActivity extends Activity {
 									try {
 										value = Integer.parseInt(input
 												.getText().toString());
-										if (value >= 0 && value <= 127) {
+										if (value > 0 && value <= 127) {
 											if (trainAddress[value] == NOT_VALID) {
 
 												// This is where train is added
@@ -906,7 +1006,22 @@ public class MainActivity extends Activity {
 														getBaseContext());
 												train_list[trainIndex]
 														.setLayoutParams(params);
-
+												train_list[trainIndex]
+														.setLeft(params.leftMargin);
+												train_list[trainIndex]
+														.setTop(params.topMargin);
+												train_list[trainIndex]
+														.setMyState(speedArray.length);
+												Toast.makeText(
+														getBaseContext(),
+														"x: "
+																+ train_list[trainIndex]
+																		.getX()
+																+ " y: "
+																+ train_list[trainIndex]
+																		.getY(),
+														Toast.LENGTH_SHORT)
+														.show();
 												// this function sets train's
 												// image based on it's value,
 												// currently just starting from
@@ -992,7 +1107,7 @@ public class MainActivity extends Activity {
 									try {
 										value = Integer.parseInt(input
 												.getText().toString());
-										if (value >= 0 && value <= 127) {
+										if (value > 0 && value <= 127) {
 											if (barcodeAddress[value] == NOT_VALID) {
 
 												// This is where barcode is
@@ -1001,7 +1116,10 @@ public class MainActivity extends Activity {
 														getBaseContext());
 												barcode_list[barcodeIndex]
 														.setLayoutParams(params);
-
+												barcode_list[barcodeIndex]
+														.setLeft(params.leftMargin);
+												barcode_list[barcodeIndex]
+														.setTop(params.topMargin);
 												setBarcodeImage(
 														getBaseContext(),
 														value, barcodeIndex);
@@ -1069,7 +1187,8 @@ public class MainActivity extends Activity {
 	// 10
 	public void setTrainImage(Context context, int value, int trainIndex) {
 
-		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value), Color.WHITE);
+		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
+				Color.WHITE);
 		Drawable drawableArray[] = new Drawable[] { train_background,
 				train_foreground, txtDrawNumber };
 		LayerDrawable layerDraw = new LayerDrawable(drawableArray);
@@ -1081,7 +1200,8 @@ public class MainActivity extends Activity {
 	// more images.
 	public void setSwitchImage(Context context, int value, int switchIndex) {
 
-		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value), Color.DKGRAY);
+		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
+				Color.DKGRAY);
 		Drawable drawableArray[] = new Drawable[] { switch_background,
 				switch_foreground, txtDrawNumber };
 		LayerDrawable layerDraw = new LayerDrawable(drawableArray);
@@ -1091,7 +1211,8 @@ public class MainActivity extends Activity {
 
 	public void setBarcodeImage(Context context, int value, int barcodeIndex) {
 
-		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value), Color.GREEN);
+		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
+				Color.GREEN);
 		Drawable drawableArray[] = new Drawable[] { barcode_background,
 				barcode_foreground, txtDrawNumber };
 		LayerDrawable layerDraw = new LayerDrawable(drawableArray);
@@ -1222,7 +1343,6 @@ public class MainActivity extends Activity {
 
 	public void deleteTrainAt(image_view touchedObject) {
 		sendStopAndDeleteMessageToMaster();
-
 		removeTrain(touchedObject.getMyIndex(), touchedObject);
 	}
 
@@ -1346,7 +1466,7 @@ public class MainActivity extends Activity {
 									}
 								}
 								trainIndex--;
-								if(btSocket != null && btconnected)
+								if (btSocket != null && btconnected)
 									sendDCCMessage(address, 64, address ^ 64);
 								trainAdapter.notifyDataSetChanged();
 							}
@@ -1386,6 +1506,8 @@ public class MainActivity extends Activity {
 			address = trainNum[spnTrain.getSelectedItemPosition()];
 			speed = Math.abs(vertSeekBar.getProgress() - vertSeekBar.getMax()
 					/ 2);
+			train_list[trainAddress[address]].setMyState(vertSeekBar
+					.getProgress());
 			Log.d(TAG_DEBUG, "Speed progress bar: " + speed);
 			commandbits = speedArray[speed];
 			Log.d(TAG_DEBUG, "Speed byte: " + speed);
@@ -1425,11 +1547,7 @@ public class MainActivity extends Activity {
 						+ Integer.toHexString(outbuffer[2]) + " checksum: 0x"
 						+ Integer.toHexString(outbuffer[3]) + "\".");
 
-		try {
-			btOutStream = btSocket.getOutputStream();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		
 		if (outbuffer != null)
 			try {
 				btOutStream.write(outbuffer);
@@ -1448,6 +1566,11 @@ public class MainActivity extends Activity {
 		int checksum = 0;
 		int endbyte = 0x0a;
 		int simpleSwitchAddress = 0;
+		boolean switchState = tglbtnSwitch.isChecked();
+		if (switchState)
+			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(1);
+		else
+			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(0);
 		byte[] outbuffer = new byte[6];
 
 		if (btconnected && btSocket != null && btSocket.isConnected()) {
@@ -1457,10 +1580,13 @@ public class MainActivity extends Activity {
 			simpleSwitchAddress = switchNum[spnSwitch.getSelectedItemPosition()];
 			address = simpleSwitchAddress & 0x7f;
 			command = ((simpleSwitchAddress >> 7) & 0x0f);
-			if (tglbtnSwitch.isChecked())
+			if (tglbtnSwitch.isChecked()) {
 				command = (0x30 | (command & 0x0f));
-			else
+				switch_list[switchAddress[simpleSwitchAddress]].setMyState(1);
+			} else {
 				command = (0x10 | (command & 0x0f));
+				switch_list[switchAddress[simpleSwitchAddress]].setMyState(0);
+			}
 
 			checksum = ~(((opcode & 0xff) ^ (address & 0xff)) ^ (command & 0xff));
 
@@ -1478,11 +1604,7 @@ public class MainActivity extends Activity {
 							+ " Checksum: " + Integer.toHexString(outbuffer[4])
 							+ " End Byte: " + Integer.toHexString(outbuffer[5]));
 
-			try {
-				btOutStream = btSocket.getOutputStream();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
+			
 			if (outbuffer != null)
 				try {
 					btOutStream.write(outbuffer);
@@ -1518,99 +1640,97 @@ public class MainActivity extends Activity {
 	}
 
 	private void createIMUThread() { // rename createBTRecieveThread
-		IMUThread = new Thread(new Runnable() {
-			public void run() {
-				boolean excep = false;
-				while (!excep) {
-					if (currentRunning && btSocket != null) {
-						// Keep listening to the InputStream until an exception
-						// occurs
-						// receive thread should look at first byte of the
-						// message.
-						// depending on first byte it should either prepare to
-						// receive
-						// current data, or location/imu data.
-						// so it check available, read the first byte, switch on
-						// that byte
-						// waiting on the correct number of bytes to be
-						// available for that type
-						// it should then put that incoming message into a
-						// buffer to be worked on
-						// and raise a flag or spawn a worker thread.
+		Log.d(TAG_DEBUG,
+				"Inside createIMUThread");
+		if (IMUThread == null)
+			IMUThread = new Thread(new Runnable() {
+				public void run() {
+					int bytes = 0;
+					boolean excep = false;
+					while (!excep) {
+						if (currentRunning && btSocket != null) {
+							// Keep listening to the InputStream until an
+							// exception
+							// occurs
+							// receive thread should look at first byte of the
+							// message.
+							// depending on first byte it should either prepare
+							// to
+							// receive
+							// current data, or location/imu data.
+							// so it check available, read the first byte,
+							// switch on
+							// that byte
+							// waiting on the correct number of bytes to be
+							// available for that type
+							// it should then put that incoming message into a
+							// buffer to be worked on
+							// and raise a flag or spawn a worker thread.
 
-						try {
+							try {
 
-							if (btconnected && btInStream != null) {
-								byte[] inbuffer = null;
-								btInStream = btSocket.getInputStream();
-								int bytes = 0;
-								bytes = btInStream.available();
-								// byte[] header = new byte[1];
+								if (btconnected && btInStream != null) {
+									byte[] inbuffer = null;
+									
+									bytes = btInStream.available();
+									// byte[] header = new byte[1];
+									
+									if (bytes >= IMU_DATA_SIZE) {
+										Log.d(TAG_DEBUG,
+												"Inside createIMUThread and bytes are: "
+														+ bytes);
+										txtvwStatus.setText(
+														"Inside createIMUThread and bytes are: "
+																+ bytes);
+										// receive first byte
+										inbuffer = new byte[bytes];
+										// Log.d(TAG_DEBUG, "number of bytes " +
+										// bytes);
+										btInStream.read(inbuffer, 0,
+												inbuffer.length);
+									
+										if (bytes == IMU_DATA_SIZE
+												&& inbuffer[0] == IMU_HEADER) {
+											// inbuffer = new byte[bytes];
 
-								if (bytes >= IMU_DATA_SIZE) {
-									Log.d(TAG_DEBUG,
-											"Inside createIMUThread and bytes are: "
-													+ bytes);
-									// receive first byte
-									inbuffer = new byte[bytes];
-									// Log.d(TAG_DEBUG, "number of bytes " +
-									// bytes);
-									btInStream.read(inbuffer, 0,
-											inbuffer.length);
-									// bytes = btInStream.available();
-									// Log.d(TAG_DEBUG, "Received message.");
+											Log.d(TAG_DEBUG,
+													"Received IMU data.");
+											// btInStream.read(inbuffer, 0,
+											// bytes);
+											int imuTrainID = (int) (inbuffer[1 & 0xff]);
+											for (int i = 0; i < IMU_DATA_SIZE - 2; i++)
+												imuBuffer[imuTrainID][0][i] = inbuffer[i + 2];
+											imuBufferIndex++;
+											// spawn current calc thread.
+											updateIMU(imuTrainID);
+										}
 
-									/*
-									 * if (bytes == CURRENT_DATA_SIZE &&
-									 * inbuffer[0] == CURRENT_HEADER) {
-									 * 
-									 * // btInStream.read(inbuffer, 0, bytes);
-									 * 
-									 * // switch on inbuffer[0] should go here
-									 * currentBuffer[currentBufferIndex %
-									 * MAX_BUFFER][0] = inbuffer[1];
-									 * currentBuffer[currentBufferIndex %
-									 * MAX_BUFFER][1] = inbuffer[2];
-									 * currentBufferIndex++; // spawn current
-									 * calc thread. if (currentBufferIndex >=
-									 * MAX_BUFFER) updateCurrent(); } else
-									 */
-									if (bytes == IMU_DATA_SIZE
-											&& inbuffer[0] == IMU_HEADER) {
-										// inbuffer = new byte[bytes];
-
-										Log.d(TAG_DEBUG, "Received IMU data.");
-										// btInStream.read(inbuffer, 0, bytes);
-										int imuTrainID = (int) (inbuffer[1 & 0xff]);
-										for (int i = 0; i < IMU_DATA_SIZE - 2; i++)
-											imuBuffer[imuTrainID][0][i] = inbuffer[i + 2];
-										imuBufferIndex++;
-										// spawn current calc thread.
-										updateIMU(imuTrainID);
 									}
 
 								}
 
+							} catch (IOException e) {
+								Log.d(TAG_DEBUG, "Exception in IMU Thread");
+								excep = true;
+								e.printStackTrace();
 							}
-
-						} catch (IOException e) {
-							excep = true;
-							e.printStackTrace();
 						}
 					}
 				}
-			}
-		});
+			});
 
 	}
 
 	public void updateTrain(int trainID, int tieCount, float xAccel,
 			float yAccel, float yawGyro, float yawDifference) {
+		trainLayoutHeight = relLayout_Track.getMeasuredHeight();
+		trainLayoutWidth = relLayout_Track.getMeasuredWidth();
+		trainLayoutScale = ((double)trainLayoutHeight/243.84);
 
 		int index = trainAddress[trainID];
 		if (index != -1) {
 			Log.d(TAG_DEBUG, "Train in list #" + trainID);
-			float arcLength = (float) (0.36585366 * (float) tieCount);
+			float arcLength = (float) (0.36585366 * (float) tieCount * trainLayoutScale);
 			float radOffset = (float) (yawGyro * 0.0174532925);
 			float distance = (float) (arcLength / radOffset);
 			float xCord = (float) (distance * Math.cos(radOffset));
@@ -1618,13 +1738,23 @@ public class MainActivity extends Activity {
 			float yCord = (float) (distance * Math.sin(radOffset));
 			yCord += train_list[index].getY();
 
-			train_list[index].setX(xCord);
-			train_list[index].setY(yCord);
+			
+			final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+					train_list[index].getWidth(),
+					train_list[index].getHeight());
+			params.topMargin = (int) yCord;
+			params.leftMargin = (int) xCord;
+			train_list[index].setLayoutParams(params);
+			train_list[index].setLeft(params.leftMargin);
+			train_list[index].setTop(params.topMargin);
+			train_list[index].bringToFront();
+			train_list[index].invalidate();
+			train_list[index].requestLayout();
 
 		}
 	}
 
-	private void updateIMU(final int imuTrainID) {
+	private void updateIMU(int imuTrainID) {
 		// new Thread(new Runnable() {
 		// public void run() {
 		Log.d(TAG_DEBUG, "Inside updateIMU function.");
@@ -1684,7 +1814,11 @@ public class MainActivity extends Activity {
 
 		final int imuBarCode = (barCodeBytes[0] & 0xff);
 
-		updateTrain(3, tieCount, acelX, acelY, gyroYaw, (gyroYaw - prevGyroYaw));
+		if (imuBarCode != 0) {
+			barCodeReZero(imuTrainID, imuBarCode);
+		}
+		updateTrain(imuTrainID, tieCount, acelX, acelY, gyroYaw,
+				(gyroYaw - prevGyroYaw));
 
 		Log.d(TAG_DEBUG,
 				"Train #" + imuTrainID + ": acel x" + String.valueOf(acelX)
@@ -1710,6 +1844,18 @@ public class MainActivity extends Activity {
 		 * } });
 		 */
 
+	}
+
+	void barCodeReZero(int imuTrainID, int barCode) {
+		int left = barcode_list[barcodeAddress[barCode]].getLeft();
+		int top = barcode_list[barcodeAddress[barCode]].getTop();
+		// train_list[trainAddress[imuTrainID]].setLeft(left);
+		// train_list[trainAddress[imuTrainID]].setTop(top);
+		train_list[trainAddress[imuTrainID]].setX((float) left);
+		train_list[trainAddress[imuTrainID]].setY((float) top);
+		train_list[trainAddress[imuTrainID]].bringToFront();
+		train_list[trainAddress[imuTrainID]].invalidate();
+		train_list[trainAddress[imuTrainID]].requestLayout();
 	}
 
 	// Android Lifecycle Management
