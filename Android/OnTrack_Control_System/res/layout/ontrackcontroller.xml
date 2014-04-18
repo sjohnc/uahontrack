@@ -17,9 +17,10 @@
             android:id="@+id/vertSeekBar"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:max="64"
             android:layout_alignParentRight="true"
-            android:layout_centerVertical="true" />
+            android:layout_centerVertical="true"
+            android:layout_marginRight="10dp"
+            android:max="64" />
 
         <Button
             android:id="@+id/btnAddTrain"
@@ -28,7 +29,7 @@
             android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
             android:visibility="invisible"
-            android:text="@string/add" />
+            android:text="@string/add"/>
 
         <TextView
             android:id="@+id/txtvwTrainTitle"
@@ -52,8 +53,8 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_below="@+id/spnTrainSelect"
-            android:visibility="invisible"
-            android:text="@string/add" />
+            android:text="@string/add"
+            android:visibility="invisible" />
 
         <TextView
             android:id="@+id/txtvwSwitchSelect"
@@ -75,10 +76,10 @@
             android:id="@+id/tglbtnSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:textOn="@string/straight"
+            android:layout_alignLeft="@id/txtvwSwitchSelect"
+            android:layout_below="@+id/spnSwitchSel"
             android:textOff="@string/divert"
-            android:layout_below="@+id/spnSwitchSel"/>
+            android:textOn="@string/straight" />
 
         <TextView
             android:id="@+id/txtvwStatus"
@@ -86,7 +87,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
-            android:text="TextView" />
+            android:text="@string/title_section2" />
 
         <Button
             android:id="@+id/btnConnect"
@@ -105,6 +106,7 @@
             android:layout_alignLeft="@+id/btnConnect"
             android:layout_alignRight="@+id/btnConnect"
             android:layout_marginBottom="25dp"
+            android:visibility="gone"
             android:text="@string/sound" />
 
         <EditText
@@ -115,7 +117,8 @@
             android:layout_below="@+id/tglbtnSwitch"
             android:layout_marginTop="52dp"
             android:ems="10"
-            android:inputType="number" >
+            android:visibility="gone"
+            android:inputType="numberSigned" >
 
             <requestFocus />
         </EditText>
@@ -126,9 +129,10 @@
             android:layout_height="wrap_content"
             android:layout_alignLeft="@+id/edtxtTieCount"
             android:layout_below="@+id/edtxtTieCount"
+            android:visibility="gone"
             android:layout_marginTop="34dp"
             android:ems="10"
-            android:inputType="number" />
+            android:inputType="numberSigned" />
 
         <TextView
             android:id="@+id/txtViewTieCount"
@@ -136,6 +140,7 @@
             android:layout_height="wrap_content"
             android:layout_alignBaseline="@+id/edtxtTieCount"
             android:layout_alignBottom="@+id/edtxtTieCount"
+            android:visibility="gone"
             android:layout_toLeftOf="@+id/edtxtTieCount"
             android:text="TieCount" />
 
@@ -145,6 +150,8 @@
             android:layout_height="wrap_content"
             android:layout_alignBottom="@+id/edtxtAngle"
             android:layout_alignLeft="@+id/txtViewTieCount"
+            
+            android:visibility="gone"
             android:text="Angle" />
 
         <Button
@@ -154,6 +161,7 @@
             android:layout_alignBottom="@+id/btnSound"
             android:layout_marginLeft="30dp"
             android:layout_toRightOf="@+id/btnSound"
+            android:visibility="gone"
             android:text="Rezero" />
 
         <EditText
@@ -162,8 +170,9 @@
             android:layout_height="wrap_content"
             android:layout_below="@+id/tglbtnSwitch"
             android:layout_toLeftOf="@+id/btnBarcode"
+            android:visibility="gone"
             android:ems="10"
-            android:inputType="number" />
+            android:inputType="numberSigned" />
 
         <TextView
             android:id="@+id/txtvwBarCode"
@@ -171,44 +180,65 @@
             android:layout_height="wrap_content"
             android:layout_alignBottom="@+id/edtxtBarCode"
             android:layout_alignRight="@+id/txtViewTieCount"
+            android:visibility="gone"
             android:text="Barcode" />
-
     </RelativeLayout>
+
+    <!--
+		Each tablet has a different resolution and pixel density
+		Currently we hard code these based on which device we are
+		working with, here are three known values that work well.
+		HP Slate 21 has width of 1700dp and height of 875dp 
+	    Samsung 10.1 has width of 1050dp and height of 600dp 
+	    Nexus 7 has width of 650dp and height of 400dp
+    -->
 
     <RelativeLayout
         android:id="@+id/relLayout_Track"
-        android:layout_width="950dp"
-        android:layout_height="600dp"
-        android:background="@drawable/rellayout_track"
-        android:tag="relLayout_Track"
+        android:layout_width="1700dp"
+        android:layout_height="875dp"
+        android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-		android:layout_alignParentLeft="true">
+        android:clipChildren="false"
+        android:tag="relLayout_Track" >
 
-
+        <ImageView
+            android:id="@+id/relLayout_ImageView"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentTop="true"
+            android:layout_below="@+id/title"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter" />
     </RelativeLayout>
+
     <RelativeLayout
         android:id="@+id/relLayout_Tray"
-        android:layout_width="1050dp"
-        android:layout_height="75dp"
+        android:layout_width="1700dp"
+        android:layout_height="50dp"
         android:layout_alignParentBottom="true"
-        android:tag="tray"
-		android:layout_alignParentLeft="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignRight="@+id/relLayout_Track"
         android:layout_below="@id/relLayout_Track"
-        >
-         <ImageView
+        android:tag="tray" >
+
+        <ImageView
             android:id="@+id/imgViewTrains"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:src="@drawable/train1" />
-          <ImageView
+
+        <ImageView
             android:id="@+id/imgViewSwitches"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_toRightOf="@id/imgViewTrains"
             android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/imgViewTrains"
             android:src="@drawable/football" />
-         <ImageView
+
+        <ImageView
             android:id="@+id/imgViewBarcodes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -216,11 +246,54 @@
             android:layout_toRightOf="@id/imgViewSwitches"
             android:src="@android:drawable/btn_star" />
 
-       
+        <Button
+            android:id="@+id/btnLocoPacket1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/imgViewBarcodes"
+            android:visibility="gone"
+            android:text="Packet 1" />
 
-       
+        <Button
+            android:id="@+id/btnLocoPacket2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/btnLocoPacket1"
+            android:visibility="gone"
+            android:text="Packet 2" />
 
+        <Button
+            android:id="@+id/btnLocoPacket3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/btnLocoPacket2"
+            android:visibility="gone"
+            android:text="Packet 3" />
 
+        <Button
+            android:id="@+id/btnLocoTrackOn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/btnLocoPacket3"
+            android:visibility="gone"
+            android:text="Track On" />
+
+        <Button
+            android:id="@+id/btnLocoTrackOff"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/btnLocoTrackOn"
+            android:visibility="gone"
+            android:text="Track Off" />
+
+        <Button
+            android:id="@+id/addLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginRight="10dp"
+            android:text="Add Layout" />
     </RelativeLayout>
 
 </RelativeLayout>

@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import edu.onTrack.dragdrop.R;
-
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore.MediaColumns;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -26,7 +26,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -34,6 +36,8 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
+import android.text.InputType;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.DragEvent;
@@ -46,7 +50,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
-import android.widget.RelativeLayout.LayoutParams;
+import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -59,6 +63,23 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 
 public class MainActivity extends Activity {
+
+	Button addLayout;
+	double heightOfLayout;
+	double widthOfLayout;
+	// ImageView img,img1;
+	int column_index;
+	Intent intent = null;
+	String logo, imagePath, Logo;
+	Cursor cursor;
+
+	ImageView image_view_track_layout;
+
+	// YOU CAN EDIT THIS TO WHATEVER YOU WANT
+	private static final int SELECT_PICTURE = 1;
+
+	String selectedImagePath;
+	String filemanagerstring;
 
 	GestureDetector gestureDetector;
 	boolean tapped;
@@ -85,11 +106,13 @@ public class MainActivity extends Activity {
 
 	protected static final byte IMU_HEADER = 10;
 	final int MAX_BUFFER = 10;
-	final int IMU_DATA_SIZE = 31;
+	final int IMU_DATA_SIZE = 32;
 	final int CURRENT_DATA_SIZE = 3;
 	final int MAX_ADDRESS = 127;
 	final int NOT_VALID = -1;
 	int px;
+
+	byte[] inbuffer = new byte[1024];
 
 	byte[][][] imuBuffer = new byte[MAX_TRAINS][MAX_BUFFER][IMU_DATA_SIZE];
 
@@ -113,7 +136,9 @@ public class MainActivity extends Activity {
 	int imuBufferIndex = 0;
 	int trainLayoutHeight = 0;
 	int trainLayoutWidth = 0;
-	double trainLayoutScale = 0;
+	int yawOffset = 0;
+	double trainLayoutScaleHeight = 0;
+	double trainLayoutScaleWidth = 0;
 
 	TextDrawable txtDrawNumber;
 	Drawable train_background;
@@ -121,6 +146,7 @@ public class MainActivity extends Activity {
 
 	// Add switch and barcode drawables
 	Drawable switch_background;
+	Drawable switch_alternative;
 	Drawable switch_foreground;
 
 	Drawable barcode_background;
@@ -140,10 +166,16 @@ public class MainActivity extends Activity {
 	// connecting Layout's to these two objects
 	RelativeLayout relLayout_Track;
 	RelativeLayout relLayout_Tray;
+	DisplayMetrics metrics;
 
 	Button btnConnect;
 	Button btnIMU;
 	Button btnRezero;
+	Button btnPacket1;
+	Button btnPacket2;
+	Button btnPacket3;
+	Button btnLocoOn;
+	Button btnLocoOff;
 	EditText edtxtTieCount;
 	EditText edtxtAngle;
 	EditText edtxtBarCode;
@@ -166,9 +198,10 @@ public class MainActivity extends Activity {
 	BluetoothSocket btSocket = null;
 	OutputStream btOutStream = null;
 	InputStream btInStream = null;
-	Boolean btconnected = false;
+	boolean btconnected = false;
 	boolean currentRunning = false;
-	Boolean exitingNow = false;
+	boolean exitingNow = false;
+	boolean firstTouch = true;
 	private static String address = null; // default address will be changed
 	private static final UUID MY_UUID = UUID
 			.fromString("00001101-0000-1000-8000-00805F9B34FB"); // default
@@ -183,10 +216,14 @@ public class MainActivity extends Activity {
 				btconnected = false;
 				txtvwStatus.setText("Disconnected");
 				currentRunning = false;
+				btnConnect.setText("Connect");
+				Log.d(TAG_DEBUG, "currentRunning onReceive");
+
 				// handler.removeCallbacks(currentRun);
 				try {
 					btSocket.close();
 					btSocket = null;
+					IMUThread = null;
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -195,11 +232,15 @@ public class MainActivity extends Activity {
 				btconnected = true;
 				Log.d(TAG_DEBUG, "Connected");
 				txtvwStatus.setText("Connected");
+				btnConnect.setText("Disconnect");
 				try {
 					btInStream = btSocket.getInputStream();
 					btOutStream = btSocket.getOutputStream();
+					if (IMUThread == null) {
+						createIMUThread();
+						IMUThread.start();
+					}
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				currentRunning = true;
@@ -240,6 +281,24 @@ public class MainActivity extends Activity {
 			// Need to return false to make sure double tap and
 			// longClickListener works together
 			return false;
+		}
+	};
+	
+	final View.OnClickListener switchClickListener = new View.OnClickListener() {
+		
+		@Override
+		public void onClick(View v) {
+			image_view touchedObject = (image_view) v;
+			int pos = switchAddress[touchedObject.getMyIndex()];
+			if (switch_list[pos].getMyState() == 0) {
+				tglbtnSwitch.setChecked(true);
+				switch_list[pos].setMyState(1);
+			} else {
+				tglbtnSwitch.setChecked(false);
+				switch_list[pos].setMyState(0);
+			}
+			locoNetMessagePrepAndSend();
+			
 		}
 	};
 
@@ -344,7 +403,7 @@ public class MainActivity extends Activity {
 			} else {
 				txtvwStatus.setText("Connection Successful!");
 				currentRunning = true;
-				
+
 			}
 
 			// filters();
@@ -411,7 +470,7 @@ public class MainActivity extends Activity {
 
 		private final String text;
 		private final Paint paint;
-		private final float textSize = 48;
+		private final float textSize = 32;
 
 		public TextDrawable(String text, int textColor) {
 
@@ -429,7 +488,7 @@ public class MainActivity extends Activity {
 
 		@Override
 		public void draw(Canvas canvas) {
-			canvas.drawText(text, px / 2, px / 2 + textSize / 4, paint);
+			canvas.drawText(text, px / 2, px / 2 + textSize / 3, paint);
 		}
 
 		@Override
@@ -456,11 +515,16 @@ public class MainActivity extends Activity {
 		public String myType;
 		public int myIndex;
 		public int myState;
+		float prevX;
+		float prevY;
 
 		public image_view(Context context) {
 			super(context);
 			myType = "";
 			myIndex = 0;
+
+			prevX = 0;
+			prevY = 0;
 		}
 
 		void setMyIndex(int myID) {
@@ -477,6 +541,22 @@ public class MainActivity extends Activity {
 
 		int getMyIndex() {
 			return myIndex;
+		}
+
+		float getPrevX() {
+			return prevX;
+		}
+
+		float getPrevY() {
+			return prevY;
+		}
+
+		void setPrevX(float inPrevX) {
+			prevX = inPrevX;
+		}
+
+		void setPrevY(float inPrevY) {
+			prevY = inPrevY;
 		}
 
 		void setMyType(String mytype) {
@@ -498,6 +578,7 @@ public class MainActivity extends Activity {
 		getWindow().setSoftInputMode(
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 		init();
+		metrics = getResources().getDisplayMetrics();
 		connectWidgets();
 		setListeners();
 		BTSetup();
@@ -523,6 +604,8 @@ public class MainActivity extends Activity {
 				R.drawable.trainfront);
 		switch_background = (Drawable) getResources().getDrawable(
 				R.drawable.switchback);
+		switch_alternative = (Drawable) getResources().getDrawable(
+				R.drawable.switchback2);
 		switch_foreground = (Drawable) getResources().getDrawable(
 				R.drawable.switchfront);
 		barcode_background = (Drawable) getResources().getDrawable(
@@ -559,6 +642,11 @@ public class MainActivity extends Activity {
 		btnConnect = (Button) findViewById(R.id.btnConnect);
 		btnIMU = (Button) findViewById(R.id.btnSound);
 		btnRezero = (Button) findViewById(R.id.btnBarcode);
+		btnPacket1 = (Button) findViewById(R.id.btnLocoPacket1);
+		btnPacket2 = (Button) findViewById(R.id.btnLocoPacket2);
+		btnPacket3 = (Button) findViewById(R.id.btnLocoPacket3);
+		btnLocoOn = (Button) findViewById(R.id.btnLocoTrackOn);
+		btnLocoOff = (Button) findViewById(R.id.btnLocoTrackOff);
 		btnIMU.setText("IMU Test");
 		edtxtBarCode = (EditText) findViewById(R.id.edtxtBarCode);
 		edtxtAngle = (EditText) findViewById(R.id.edtxtAngle);
@@ -569,11 +657,15 @@ public class MainActivity extends Activity {
 		tglbtnSwitch = (ToggleButton) findViewById(R.id.tglbtnSwitch);
 		spnTrain = (Spinner) findViewById(R.id.spnTrainSelect);
 		spnSwitch = (Spinner) findViewById(R.id.spnSwitchSel);
-		txtvwStatus = (TextView)findViewById(R.id.txtvwStatus);
+		txtvwStatus = (TextView) findViewById(R.id.txtvwStatus);
 
 		// Layouts
 		relLayout_Track = (RelativeLayout) findViewById(R.id.relLayout_Track);
 		relLayout_Tray = (RelativeLayout) findViewById(R.id.relLayout_Tray);
+
+		addLayout = (Button) findViewById(R.id.addLayout);
+
+		image_view_track_layout = (ImageView) findViewById(R.id.relLayout_ImageView);
 	}
 
 	private void setListeners() {
@@ -593,12 +685,82 @@ public class MainActivity extends Activity {
 		switchAdapter
 				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnSwitch.setAdapter(switchAdapter);
-
+		// image_view_track_layout.setOnTouchListener(new View.OnTouchListener()
+		// {
+		//
+		// @Override
+		// public boolean onTouch(View v, MotionEvent event) {
+		// Toast.makeText(getBaseContext(), "Touched at x: " +event.getX() +
+		// " y: " + event.getY() , Toast.LENGTH_SHORT).show();
+		// return false;
+		// }
+		// });
 		btnConnect.setOnClickListener(new View.OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
-				new BTConnect().execute();
+				if (btnConnect.getText().toString().contains("Connect"))
+					new BTConnect().execute();
+				else
+					try {
+						btSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+
+			}
+		});
+		btnPacket1.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				locoNetSendMessage3(0xB5, 0x01, 0x13);
+
+			}
+		});
+		btnPacket2.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				if (trainIndex > 0)
+					locoNetSendMessage3(
+							0xBF,
+							0x00,
+							train_list[spnTrain.getSelectedItemPosition()].myIndex);
+				else
+					locoNetSendMessage3(0xBF, 0x00, 0x03);
+
+			}
+		});
+		btnPacket3.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				locoNetSendMessage3(0xBA, 0x01, 0x01);
+
+			}
+		});
+		btnLocoOn.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				locoNetSendMessage1(0x83);
+
+			}
+		});
+		btnLocoOff.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				locoNetSendMessage1(0x82);
+
+			}
+		});
+		btnPacket3.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				locoNetSendMessage3(0xBA, 0x01, 0x01);
 
 			}
 		});
@@ -635,6 +797,22 @@ public class MainActivity extends Activity {
 				}
 			}
 		});
+
+		addLayout.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				// in onCreate or any event where your want the user to
+				// select a file
+				Intent intent = new Intent();
+				intent.setType("image/*");
+				intent.setAction(Intent.ACTION_GET_CONTENT);
+				startActivityForResult(
+						Intent.createChooser(intent, "Select Picture"),
+						SELECT_PICTURE);
+			}
+		});
+
 		spnTrain.setOnItemSelectedListener(new OnItemSelectedListener() {
 
 			@Override
@@ -655,10 +833,12 @@ public class MainActivity extends Activity {
 			@Override
 			public void onItemSelected(AdapterView<?> parentView,
 					View selectedView, int pos, long id) {
-				if (switch_list[pos].myState == 0)
+				if (switch_list[pos].getMyState() == 0) {
 					tglbtnSwitch.setChecked(false);
-				else
+				} else {
 					tglbtnSwitch.setChecked(true);
+				}
+				locoNetMessagePrepAndSend();
 
 			}
 
@@ -756,11 +936,13 @@ public class MainActivity extends Activity {
 
 					@Override
 					public void onStopTrackingTouch(SeekBar seekBar) {
-						train_list[spnTrain.getSelectedItemPosition()]
-								.setMyState(vertSeekBar.getProgress());
-						if (btconnected && btSocket != null
-								&& btSocket.isConnected())
-							dccMessagePrepAndSend();
+						if (trainIndex > 0) {
+							train_list[spnTrain.getSelectedItemPosition()]
+									.setMyState(vertSeekBar.getProgress());
+							if (btconnected && btSocket != null
+									&& btSocket.isConnected())
+								dccMessagePrepAndSend();
+						}
 					}
 
 					@Override
@@ -771,9 +953,9 @@ public class MainActivity extends Activity {
 					@Override
 					public void onProgressChanged(SeekBar seekBar,
 							int progress, boolean fromUser) {
-						if (btconnected && btSocket != null
-								&& btSocket.isConnected())
-							dccMessagePrepAndSend();
+						// if (btconnected && btSocket != null
+						// && btSocket.isConnected())
+						// dccMessagePrepAndSend();
 					}
 				});
 	}
@@ -816,6 +998,10 @@ public class MainActivity extends Activity {
 
 		for (int i = 0; i < MAX_BARCODES; i++) {
 			barcodeNum[i] = NOT_VALID;
+		}
+
+		for (int i = 0; i < 1024; i++) {
+			inbuffer[i] = 0;
 		}
 
 	}
@@ -927,6 +1113,9 @@ public class MainActivity extends Activity {
 
 												switch_list[switchIndex]
 														.setOnTouchListener(touchListener);
+												switch_list[switchIndex]
+														.setOnClickListener(switchClickListener);
+												
 												relLayout_Track
 														.addView(switch_list[switchIndex]);
 
@@ -1061,6 +1250,7 @@ public class MainActivity extends Activity {
 												trainAdapter
 														.notifyDataSetChanged();
 												spnTrain.setSelection(trainIndex);
+												setScaledLayout();
 
 											} else {
 												Toast.makeText(
@@ -1091,22 +1281,43 @@ public class MainActivity extends Activity {
 
 	public void addBarcodeAt(final RelativeLayout.LayoutParams params,
 			final String tag) {
+		// final EditText input = new EditText(MainActivity.this);
+
+		LinearLayout layout = new LinearLayout(MainActivity.this);
+		layout.setOrientation(LinearLayout.VERTICAL);
+
 		final EditText input = new EditText(MainActivity.this);
+		input.setHint("Barcode Number");
+		input.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		layout.addView(input);
+
+		final EditText angleInput = new EditText(MainActivity.this);
+		angleInput.setHint("Barcode angle in Degrees");
+		angleInput.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		layout.addView(angleInput);
+
 		if (barcodeIndex < MAX_BARCODES) { // Checks to make sure the maximum
 											// number
 			// of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
 					.setTitle("Add A Barcode")
 					.setMessage("Please input the barcode number")
-					.setView(input)
+					.setView(layout)
 					.setPositiveButton("Ok",
 							new DialogInterface.OnClickListener() {
 								public void onClick(DialogInterface dialog,
 										int whichButton) {
 									int value;
+									int angle;
 									try {
 										value = Integer.parseInt(input
 												.getText().toString());
+										if (angleInput.getText().toString()
+												.length() != 0)
+											angle = Integer.parseInt(angleInput
+													.getText().toString());
+										else
+											angle = -1;
 										if (value > 0 && value <= 127) {
 											if (barcodeAddress[value] == NOT_VALID) {
 
@@ -1120,6 +1331,8 @@ public class MainActivity extends Activity {
 														.setLeft(params.leftMargin);
 												barcode_list[barcodeIndex]
 														.setTop(params.topMargin);
+												barcode_list[barcodeIndex]
+														.setMyState(angle);
 												setBarcodeImage(
 														getBaseContext(),
 														value, barcodeIndex);
@@ -1180,6 +1393,7 @@ public class MainActivity extends Activity {
 									// Do nothing.
 								}
 							}).show();
+
 		}
 	}
 
@@ -1203,6 +1417,17 @@ public class MainActivity extends Activity {
 		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
 				Color.DKGRAY);
 		Drawable drawableArray[] = new Drawable[] { switch_background,
+				switch_foreground, txtDrawNumber };
+		LayerDrawable layerDraw = new LayerDrawable(drawableArray);
+		switch_list[switchIndex].setImageDrawable(layerDraw);
+
+	}
+	
+	public void setSwitchActive(Context context, int value, int switchIndex) {
+
+		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
+				Color.DKGRAY);
+		Drawable drawableArray[] = new Drawable[] { switch_alternative,
 				switch_foreground, txtDrawNumber };
 		LayerDrawable layerDraw = new LayerDrawable(drawableArray);
 		switch_list[switchIndex].setImageDrawable(layerDraw);
@@ -1234,8 +1459,8 @@ public class MainActivity extends Activity {
 			// "Touching " + touchedObject.getType()
 			// + touchedObject.getMyIndex(), Toast.LENGTH_SHORT)
 			// .show();
-
-			spnSwitch.setSelection(switchAddress[touchedObject.myIndex]);
+			int pos = switchAddress[touchedObject.myIndex];
+			spnSwitch.setSelection(pos);
 		} else if (touchedObject.getType() == "barcode") {
 			Toast.makeText(
 					getBaseContext(),
@@ -1547,7 +1772,58 @@ public class MainActivity extends Activity {
 						+ Integer.toHexString(outbuffer[2]) + " checksum: 0x"
 						+ Integer.toHexString(outbuffer[3]) + "\".");
 
-		
+		if (outbuffer != null)
+			try {
+				btOutStream.write(outbuffer);
+				btOutStream.flush();
+				// btOutStream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	}
+
+	private void locoNetSendMessage1(int out1) {
+		int loconet = 0x01;
+		int checksum = 0;
+
+		byte[] outbuffer = new byte[3];
+
+		if (btconnected && btSocket != null && btSocket.isConnected()) {
+
+			checksum = ~((out1 & 0xff));
+
+			outbuffer[0] = (byte) (loconet & 0xff);
+			outbuffer[1] = (byte) (out1 & 0xff);
+			outbuffer[2] = (byte) (checksum & 0xff);
+
+		}
+		if (outbuffer != null)
+			try {
+				btOutStream.write(outbuffer);
+				btOutStream.flush();
+				// btOutStream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	}
+
+	private void locoNetSendMessage3(int out1, int out2, int out3) {
+		int loconet = 0x01;
+		int checksum = 0;
+
+		byte[] outbuffer = new byte[5];
+
+		if (btconnected && btSocket != null && btSocket.isConnected()) {
+
+			checksum = ~(((out1 & 0xff) ^ (out2 & 0xff)) ^ (out3 & 0xff));
+
+			outbuffer[0] = (byte) (loconet & 0xff);
+			outbuffer[1] = (byte) (out1 & 0xff);
+			outbuffer[2] = (byte) (out2 & 0xff);
+			outbuffer[3] = (byte) (out3 & 0xff);
+			outbuffer[4] = (byte) (checksum & 0xff);
+
+		}
 		if (outbuffer != null)
 			try {
 				btOutStream.write(outbuffer);
@@ -1567,10 +1843,14 @@ public class MainActivity extends Activity {
 		int endbyte = 0x0a;
 		int simpleSwitchAddress = 0;
 		boolean switchState = tglbtnSwitch.isChecked();
-		if (switchState)
+		if (switchState){
 			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(1);
-		else
+			setSwitchActive(getBaseContext(), switch_list[spnSwitch.getSelectedItemPosition()].myIndex, spnSwitch.getSelectedItemPosition());
+		}
+		else{
 			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(0);
+			setSwitchImage(getBaseContext(), switch_list[spnSwitch.getSelectedItemPosition()].myIndex, spnSwitch.getSelectedItemPosition());
+		}
 		byte[] outbuffer = new byte[6];
 
 		if (btconnected && btSocket != null && btSocket.isConnected()) {
@@ -1604,7 +1884,6 @@ public class MainActivity extends Activity {
 							+ " Checksum: " + Integer.toHexString(outbuffer[4])
 							+ " End Byte: " + Integer.toHexString(outbuffer[5]));
 
-			
 			if (outbuffer != null)
 				try {
 					btOutStream.write(outbuffer);
@@ -1640,116 +1919,276 @@ public class MainActivity extends Activity {
 	}
 
 	private void createIMUThread() { // rename createBTRecieveThread
-		Log.d(TAG_DEBUG,
-				"Inside createIMUThread");
+		Log.d(TAG_DEBUG, "Creating IMU Thread");
 		if (IMUThread == null)
 			IMUThread = new Thread(new Runnable() {
 				public void run() {
-					int bytes = 0;
+
 					boolean excep = false;
 					while (!excep) {
-						if (currentRunning && btSocket != null) {
-							// Keep listening to the InputStream until an
-							// exception
-							// occurs
-							// receive thread should look at first byte of the
-							// message.
-							// depending on first byte it should either prepare
-							// to
-							// receive
-							// current data, or location/imu data.
-							// so it check available, read the first byte,
-							// switch on
-							// that byte
-							// waiting on the correct number of bytes to be
-							// available for that type
-							// it should then put that incoming message into a
-							// buffer to be worked on
-							// and raise a flag or spawn a worker thread.
 
-							try {
+						// Log.d(TAG_DEBUG, "currentRunning is: " +
+						// currentRunning
+						// + " btsocket is : " + (btSocket != null));
 
-								if (btconnected && btInStream != null) {
-									byte[] inbuffer = null;
-									
-									bytes = btInStream.available();
-									// byte[] header = new byte[1];
-									
-									if (bytes >= IMU_DATA_SIZE) {
-										Log.d(TAG_DEBUG,
-												"Inside createIMUThread and bytes are: "
-														+ bytes);
-										txtvwStatus.setText(
-														"Inside createIMUThread and bytes are: "
-																+ bytes);
-										// receive first byte
-										inbuffer = new byte[bytes];
-										// Log.d(TAG_DEBUG, "number of bytes " +
-										// bytes);
-										btInStream.read(inbuffer, 0,
-												inbuffer.length);
-									
-										if (bytes == IMU_DATA_SIZE
-												&& inbuffer[0] == IMU_HEADER) {
-											// inbuffer = new byte[bytes];
+						// Keep listening to the InputStream until an
+						// exception
+						// occurs
+						// receive thread should look at first byte of the
+						// message.
+						// depending on first byte it should either prepare
+						// to
+						// receive
+						// current data, or location/imu data.
+						// so it check available, read the first byte,
+						// switch on
+						// that byte
+						// waiting on the correct number of bytes to be
+						// available for that type
+						// it should then put that incoming message into a
+						// buffer to be worked on
+						// and raise a flag or spawn a worker thread.
 
-											Log.d(TAG_DEBUG,
-													"Received IMU data.");
-											// btInStream.read(inbuffer, 0,
-											// bytes);
-											int imuTrainID = (int) (inbuffer[1 & 0xff]);
-											for (int i = 0; i < IMU_DATA_SIZE - 2; i++)
-												imuBuffer[imuTrainID][0][i] = inbuffer[i + 2];
-											imuBufferIndex++;
-											// spawn current calc thread.
-											updateIMU(imuTrainID);
-										}
+						// Log.d(TAG_DEBUG, "currentRunning before try");
+						try {
 
-									}
+							if (/* btconnected && */btInStream != null
+									&& btSocket != null) {
+
+								// Log.d(TAG_DEBUG, "currentRunning true");
+								// Thread.sleep(10);
+								// int actualReceivedBytesFirstTime =
+								// btInStream.read(inbuffer);
+								// // while (actualReceivedBytesFirstTime != -1)
+								// // actualReceivedBytesFirstTime =
+								// btInStream.read(inbuffer);
+								// int actualReceivedBytesSecondTime = 0;
+								byte readByte = (byte) (btInStream.read() & 0xff);
+								while (readByte != 10) {
+									readByte = (byte) (btInStream.read() & 0xff);
 
 								}
+								inbuffer[0] = 10;
+								for (int i = 1; i < IMU_DATA_SIZE; i++) {
+									inbuffer[i] = (byte) (btInStream.read() & 0xff);
+								}
+								byte checksum = 0;
+								for (int i = 0; i < IMU_DATA_SIZE - 1; i++) {
+									checksum ^= inbuffer[i];
+								}
 
-							} catch (IOException e) {
-								Log.d(TAG_DEBUG, "Exception in IMU Thread");
-								excep = true;
-								e.printStackTrace();
+								if (checksum != inbuffer[IMU_DATA_SIZE - 1])
+									Log.d(TAG_DEBUG, "Checksum is invalid");
+								else {
+									Log.d(TAG_DEBUG, "Checksum is valid");
+
+									/*
+									 * if(actualReceivedBytesFirstTime <
+									 * IMU_DATA_SIZE) {
+									 * actualReceivedBytesSecondTime =
+									 * btInStream.read(inbuffer,
+									 * actualReceivedBytesFirstTime
+									 * ,IMU_DATA_SIZE
+									 * -actualReceivedBytesFirstTime);
+									 * 
+									 * }
+									 */
+
+									// int totalBytes =
+									// actualReceivedBytesFirstTime
+									// + actualReceivedBytesSecondTime;
+
+									Log.d(TAG_DEBUG,
+											"currentRunning receieved a "
+													+ readByte + " byte");
+
+									// ensuring IMU_header and train 3 are
+									// received
+									// in sequence.
+									if (inbuffer[0] == IMU_HEADER) {
+										Log.d(TAG_DEBUG,
+												"currentRunning Received IMU data.");
+										int imuTrainID = ((int) (inbuffer[1])) & 0xff;
+										for (int i = 0; i < IMU_DATA_SIZE - 2; i++)
+											imuBuffer[imuTrainID][0][i] = inbuffer[i + 2];
+										imuBufferIndex++;
+										// spawn current calc thread.
+										updateIMU(imuTrainID);
+									}
+
+									/*
+									 * bytes = btInStream.available(); // byte[]
+									 * header = new byte[1];
+									 * 
+									 * 
+									 * if (bytes >= IMU_DATA_SIZE) {
+									 * Log.d(TAG_DEBUG,
+									 * "Inside createIMUThread and bytes are: "
+									 * + bytes);
+									 * 
+									 * // receive first byte inbuffer = new
+									 * byte[IMU_DATA_SIZE]; // Log.d(TAG_DEBUG,
+									 * "number of bytes " + // bytes);
+									 * btInStream.read(inbuffer, 0,
+									 * IMU_DATA_SIZE);
+									 * 
+									 * if (bytes >= IMU_DATA_SIZE && inbuffer[0]
+									 * == IMU_HEADER) { // inbuffer = new
+									 * byte[bytes];
+									 * 
+									 * Log.d(TAG_DEBUG, "Received IMU data.");
+									 * // btInStream.read(inbuffer, 0, //
+									 * bytes); int imuTrainID = ((int)
+									 * (inbuffer[1])) & 0xff; for (int i = 0; i
+									 * < IMU_DATA_SIZE - 2; i++)
+									 * imuBuffer[imuTrainID][0][i] = inbuffer[i
+									 * + 2]; imuBufferIndex++; // spawn current
+									 * calc thread. updateIMU(imuTrainID); }
+									 * 
+									 * }
+									 */
+									for (int i = 0; i < IMU_DATA_SIZE; i++) {
+										inbuffer[i] = 0;
+									}
+								}
+							} else {
+								// Log.d(TAG_DEBUG, "currentRunning false");
 							}
+
+						} catch (IOException e) {
+							Log.d(TAG_DEBUG, "Exception in IMU Thread");
+							excep = true;
+							e.printStackTrace();
 						}
 					}
 				}
+
 			});
+		Log.d(TAG_DEBUG, "Thread exiting");
 
 	}
 
 	public void updateTrain(int trainID, int tieCount, float xAccel,
 			float yAccel, float yawGyro, float yawDifference) {
-		trainLayoutHeight = relLayout_Track.getMeasuredHeight();
-		trainLayoutWidth = relLayout_Track.getMeasuredWidth();
-		trainLayoutScale = ((double)trainLayoutHeight/243.84);
+		// once used relLayout_Track for movement, now need to use
+		// image_view_track_layout
+		// trainLayoutHeight = image_view_track_layout.getMeasuredHeight();
+		// trainLayoutWidth = image_view_track_layout.getMeasuredWidth();
+		// Log.d(TAG_DEBUG, "Tracklayout height is: " + trainLayoutHeight +
+		// " Tracklayout width is: " + trainLayoutWidth);
+		// heightOfLayout & widthOfLayout is in Inches, * 2.54 to get to cm.
+		// we move pixels when moving so we need to find the ratio of pixels per
+		// cm.
+		// degrees to radians is pi/180 thus the 0.017453
 
-		int index = trainAddress[trainID];
+		final int index = trainAddress[trainID];
 		if (index != -1) {
 			Log.d(TAG_DEBUG, "Train in list #" + trainID);
-			float arcLength = (float) (0.36585366 * (float) tieCount * trainLayoutScale);
-			float radOffset = (float) (yawGyro * 0.0174532925);
-			float distance = (float) (arcLength / radOffset);
-			float xCord = (float) (distance * Math.cos(radOffset));
-			xCord += train_list[index].getX();
-			float yCord = (float) (distance * Math.sin(radOffset));
-			yCord += train_list[index].getY();
 
-			
+			// int yawNeg = 1;
+
+			// if (yawGyro < 0)
+			// yawNeg = -1;
+			//
+			// if (yawNeg == -1)
+			// yawGyro *= -1;
+
+			float direction = 1;
+			if ((train_list[index].getMyState()) < speedArray.length) {
+				Log.d(TAG_DEBUG, "Setting reverse");
+				// direction = -1;
+				yawGyro = yawGyro + 180;
+			}
+			// else
+			// {
+			// direction = -1;
+			// yawGyro = yawGyro + 180;
+			// }
+			float xCord = 0;
+			float yCord = 0;
+			// if (Math.abs(yawGyro) < 6) {
+			// small angle approximation
+			float radianAngle = (float) (yawGyro * 0.01745);
+			// ruler measured big track
+			// float distance = (float) (0.36585 * tieCount * direction);
+
+			// caliper measured big track.
+			float distance = (float) (0.36979 * tieCount * direction);
+
+			// round track layout size
+			// float distance = (float) (0.34287 * tieCount * direction);
+
+			// old approximation
+			double cos = Math.cos(radianAngle);
+			xCord = (float) ((double) distance * cos * trainLayoutScaleWidth);
+			if (train_list[index].getPrevX() == 0)
+				xCord += train_list[index].getX();
+			else
+				xCord += train_list[index].getPrevX();
+			train_list[index].setPrevX(xCord);
+			// if (yawNeg == 1) {
+			double sin = Math.sin(radianAngle);
+			yCord = (float) ((double) distance * sin * trainLayoutScaleHeight);
+			yCord = Math.round(yCord);
+			// Log.d(TAG_DEBUG,
+			// "Sine of angle: " + yawGyro + " Sin is: "
+			// + Math.sin(radianAngle));
+			if (train_list[index].getPrevY() == 0)
+				yCord += train_list[index].getY();
+			else
+				yCord += train_list[index].getPrevY();
+			train_list[index].setPrevY(yCord);
+			xCord = Math.round(xCord);
+			yCord = Math.round(yCord);
+			// } else {
+			// double sin = Math.sin(radianAngle);
+			// yCord = (float) (distance * sin * trainLayoutScaleHeight);
+			// Log.d(TAG_DEBUG, "Sine of angle: " + yawGyro + " Sin is: " +
+			// Math.sin(radianAngle));
+			// yCord = Math.round(yCord);
+			// yCord = train_list[index].getY() - yCord;
+			// }
+			// cos approx: cos theta = 1 - (theta^2)/2
+			// xCord = (float) (distance
+			// * (1 - (radianAngle * radianAngle) / 2) *
+			// trainLayoutScaleWidth);
+			// xCord += train_list[index].getX();
+			// // sin approx: sin theta = theta
+			// yCord = (float) (distance * radianAngle *
+			// trainLayoutScaleHeight);
+			// yCord += train_list[index].getY();
+			/*
+			 * } else { float arcLength = (float) (0.36585366 * (float)
+			 * tieCount); float radianAngle = (float) (yawGyro * 0.0174532925);
+			 * float distance = (float) (arcLength / radianAngle) * direction;
+			 * xCord = (float) (distance * Math.cos(radianAngle) *
+			 * trainLayoutScaleWidth); xCord += train_list[index].getX(); yCord
+			 * = (float) (distance * Math.sin(radianAngle) *
+			 * trainLayoutScaleHeight); yCord += train_list[index].getY(); }
+			 */
+
+			Log.d(TAG_DEBUG, "Moving train #" + trainID + " from x: "
+					+ train_list[index].getX() + " to x: " + xCord
+					+ ". Moving from y:" + train_list[index].getY() + " to y: "
+					+ yCord);
 			final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-					train_list[index].getWidth(),
-					train_list[index].getHeight());
+					train_list[index].getWidth(), train_list[index].getHeight());
+			params.height = px;
+			params.width = px;
 			params.topMargin = (int) yCord;
 			params.leftMargin = (int) xCord;
-			train_list[index].setLayoutParams(params);
-			train_list[index].setLeft(params.leftMargin);
-			train_list[index].setTop(params.topMargin);
-			train_list[index].bringToFront();
-			train_list[index].invalidate();
-			train_list[index].requestLayout();
+			train_list[index].post(new Runnable() {
+
+				@Override
+				public void run() {
+					train_list[index].setLayoutParams(params);
+					train_list[index].setLeft(params.leftMargin);
+					train_list[index].setTop(params.topMargin);
+					train_list[index].bringToFront();
+					train_list[index].invalidate();
+					train_list[index].requestLayout();
+				}
+			});
 
 		}
 	}
@@ -1778,12 +2217,7 @@ public class MainActivity extends Activity {
 			gyroYawBytes[i] = imuBuffer[imuTrainID][0][i + 20];
 			prevGyroYawBytes[i] = imuBuffer[imuTrainID][1][i + 20];
 			tieCountBytes[i] = imuBuffer[imuTrainID][0][i + 24];
-			prevTieCountBytes[i] = imuBuffer[imuTrainID][1][i + 24];
 
-		}
-		for (int i = 0; i < 4; i++) {
-			imuBuffer[imuTrainID][1][i + 20] = imuBuffer[imuTrainID][0][i + 20];
-			imuBuffer[imuTrainID][1][i + 24] = imuBuffer[imuTrainID][0][i + 24];
 		}
 
 		barCodeBytes[0] = imuBuffer[imuTrainID][0][28];
@@ -1804,31 +2238,53 @@ public class MainActivity extends Activity {
 		final float gyroRoll = ByteBuffer.wrap(gyroRollBytes)
 				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
 
-		final int tieCount = (ByteBuffer.wrap(tieCountBytes).order(
-				ByteOrder.LITTLE_ENDIAN).getInt())
-				- (ByteBuffer.wrap(prevTieCountBytes).order(
-						ByteOrder.LITTLE_ENDIAN).getInt());
-
 		final float prevGyroYaw = ByteBuffer.wrap(prevGyroYawBytes)
 				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
 
 		final int imuBarCode = (barCodeBytes[0] & 0xff);
 
 		if (imuBarCode != 0) {
-			barCodeReZero(imuTrainID, imuBarCode);
+			int barCodeYaw = barCodeReZero(imuTrainID, imuBarCode);
+			Log.d(TAG_DEBUG, "IMU Barcode: " + imuBarCode);
+			if (barCodeYaw != -1)
+				yawOffset = (int) (gyroYaw - barCodeYaw);
 		}
-		updateTrain(imuTrainID, tieCount, acelX, acelY, gyroYaw,
-				(gyroYaw - prevGyroYaw));
+
+		float calibratedYaw = (gyroYaw - yawOffset);
+		Log.d(TAG_DEBUG, "Yaw: gyro:" + gyroYaw + " calibrated: "
+				+ calibratedYaw + " offset: " + yawOffset);
+		for (int i = 0; i < 4; i++)
+			prevTieCountBytes[i] = imuBuffer[imuTrainID][1][i + 24];
+
+		final int curTieCount = (ByteBuffer.wrap(tieCountBytes).order(
+				ByteOrder.LITTLE_ENDIAN).getInt());
+		final int prevTieCount = (ByteBuffer.wrap(prevTieCountBytes).order(
+				ByteOrder.LITTLE_ENDIAN).getInt());
+
+		int tieCount = curTieCount - prevTieCount;
+		if (tieCount < 0)
+			tieCount = curTieCount;
 
 		Log.d(TAG_DEBUG,
-				"Train #" + imuTrainID + ": acel x" + String.valueOf(acelX)
-						+ ", acel y " + String.valueOf(acelY) + ", acel z "
+				"currentRunning Train #" + imuTrainID + ": acel x"
+						+ String.valueOf(acelX) + ", acel y "
+						+ String.valueOf(acelY) + ", acel z "
 						+ String.valueOf(acelZ) + ", gyroYaw "
 						+ String.valueOf(gyroYaw) + ", gyroPitch "
 						+ String.valueOf(gyroPitch) + ", gyroRoll "
-						+ String.valueOf(gyroRoll) + ", tieCount "
+						+ String.valueOf(gyroRoll) + ", prevTieCount "
+						+ String.valueOf(prevTieCount) + ", curTieCount "
+						+ String.valueOf(curTieCount) + ", tieCountDiff "
 						+ String.valueOf(tieCount) + ", imuBarCode "
 						+ String.valueOf(imuBarCode));
+
+		updateTrain(imuTrainID, tieCount, acelX, acelY, calibratedYaw,
+				(gyroYaw - prevGyroYaw));
+
+		for (int i = 0; i < 4; i++) {
+			imuBuffer[imuTrainID][1][i + 20] = imuBuffer[imuTrainID][0][i + 20];
+			imuBuffer[imuTrainID][1][i + 24] = imuBuffer[imuTrainID][0][i + 24];
+		}
 
 		/*
 		 * txtvwStatus.post(new Runnable() {
@@ -1846,16 +2302,47 @@ public class MainActivity extends Activity {
 
 	}
 
-	void barCodeReZero(int imuTrainID, int barCode) {
-		int left = barcode_list[barcodeAddress[barCode]].getLeft();
-		int top = barcode_list[barcodeAddress[barCode]].getTop();
-		// train_list[trainAddress[imuTrainID]].setLeft(left);
-		// train_list[trainAddress[imuTrainID]].setTop(top);
-		train_list[trainAddress[imuTrainID]].setX((float) left);
-		train_list[trainAddress[imuTrainID]].setY((float) top);
-		train_list[trainAddress[imuTrainID]].bringToFront();
-		train_list[trainAddress[imuTrainID]].invalidate();
-		train_list[trainAddress[imuTrainID]].requestLayout();
+	int barCodeReZero(final int imuTrainID, final int barCode) {
+
+		for (int i = 0; i < 4; i++)
+			imuBuffer[imuTrainID][1][i + 24] = 0;
+		Log.d(TAG_DEBUG, "Barcode is: " + barCode);
+		if (barcodeIndex > 0 && barCode != 3 && barCode != 4) {
+			if (barcodeAddress[barCode] != -1) {
+				final int left = barcode_list[barcodeAddress[barCode]]
+						.getLeft();
+				final int top = barcode_list[barcodeAddress[barCode]].getTop();
+				// train_list[trainAddress[imuTrainID]].setLeft(left);
+				// train_list[trainAddress[imuTrainID]].setTop(top);
+
+				final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+						train_list[barcodeAddress[barCode]].getWidth(),
+						train_list[barcodeAddress[barCode]].getHeight());
+				params.height = px;
+				params.width = px;
+				params.topMargin = top;
+				params.leftMargin = left;
+				train_list[barcodeAddress[barCode]].post(new Runnable() {
+
+					@Override
+					public void run() {
+						train_list[barcodeAddress[barCode]]
+								.setLayoutParams(params);
+						train_list[barcodeAddress[barCode]]
+								.setLeft(params.leftMargin);
+						train_list[barcodeAddress[barCode]]
+								.setTop(params.topMargin);
+						train_list[barcodeAddress[barCode]].bringToFront();
+						train_list[barcodeAddress[barCode]].invalidate();
+						train_list[barcodeAddress[barCode]].requestLayout();
+					}
+				});
+
+				return barcode_list[barcodeAddress[barCode]].getMyState();
+			}
+		}
+		return -1;
+
 	}
 
 	// Android Lifecycle Management
@@ -1878,6 +2365,7 @@ public class MainActivity extends Activity {
 			// handler.removeCallbacks(currentRun);
 			try {
 				currentRunning = false;
+				Log.d(TAG_DEBUG, "currentRunning onDestroy");
 				Thread.sleep(5);
 
 				if (btSocket != null)
@@ -1920,7 +2408,9 @@ public class MainActivity extends Activity {
 
 	@Override
 	public void onPause() {
-		Log.d(TAG_DEBUG, "...In onPause()... thread is: " + IMUThread.isAlive());
+		if (IMUThread != null)
+			Log.d(TAG_DEBUG,
+					"...In onPause()... thread is: " + IMUThread.isAlive());
 		if (btOutStream != null) {
 			try {
 				btOutStream.flush();
@@ -1973,6 +2463,154 @@ public class MainActivity extends Activity {
 		} else {
 			return super.onKeyDown(keyCode, event);
 		}
+	}
+
+	// UPDATED
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if (resultCode == Activity.RESULT_OK) {
+			if (requestCode == SELECT_PICTURE) {
+				Uri selectedImageUri = data.getData();
+
+				// OI FILE Manager
+				// filemanagerstring = selectedImageUri.getPath();
+
+				// MEDIA GALLERY
+
+				image_view_track_layout.setImageURI(selectedImageUri);
+				selectedImagePath = getPath(selectedImageUri);
+				imagePath.getBytes();
+				// TextView txt = (TextView)findViewById(R.id.title);
+				// txt.setText(imagePath.toString());
+
+				@SuppressWarnings("unused")
+				Bitmap bm = BitmapFactory.decodeFile(imagePath);
+
+				// img1.setImageBitmap(bm);
+
+				getHeightAndWidthOfLayout();
+
+			}
+
+		}
+
+	}
+
+	/*
+	 * //UPDATED
+	 * 
+	 * @Override public void onActivityResult(int requestCode, int resultCode,
+	 * Intent data) { if (resultCode == Activity.RESULT_OK) { if (requestCode ==
+	 * SELECT_PICTURE) { Uri selectedImageUri = data.getData();
+	 * 
+	 * //MEDIA GALLERY selectedImagePath = getPath(selectedImageUri);
+	 * 
+	 * BitmapDrawable background = new BitmapDrawable(imagePath.toString());
+	 * relLayout_Track.setBackground(background);
+	 * 
+	 * getHeightAndWidthOfLayout(); } } }
+	 */
+
+	public void getHeightAndWidthOfLayout() {
+		// final EditText input = new EditText(MainActivity.this);
+
+		LinearLayout layout = new LinearLayout(MainActivity.this);
+		layout.setOrientation(LinearLayout.VERTICAL);
+
+		final EditText heightInput = new EditText(MainActivity.this);
+		heightInput.setHint("Height in Inches");
+		heightInput.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		heightInput.setText("96");
+		layout.addView(heightInput);
+
+		final EditText widthInput = new EditText(MainActivity.this);
+		widthInput.setHint("Width in Inches");
+		widthInput.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		widthInput.setText("192");
+		layout.addView(widthInput);
+
+		new AlertDialog.Builder(MainActivity.this)
+				.setTitle("Add Height and width of Image")
+				.setMessage("Please Input the Height and Width")
+				.setView(layout)
+				.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int whichButton) {
+						try {
+							heightOfLayout = Double.parseDouble(heightInput
+									.getText().toString());
+							widthOfLayout = Double.parseDouble(widthInput
+									.getText().toString());
+							if (heightOfLayout > 0 && widthOfLayout > 0) {
+								Toast.makeText(
+										getBaseContext(),
+										"heightOfLayout is: " + heightOfLayout
+												+ " widthOfLayout is: "
+												+ widthOfLayout,
+										Toast.LENGTH_SHORT).show();
+							}
+						} catch (NumberFormatException nfe) {
+							System.out.println("Could not parse " + nfe);
+						}
+
+					}
+				})
+				.setNegativeButton("Cancel",
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								// Do nothing.
+							}
+						}).show();
+
+		// image_view_track_layout.measure(
+		// image_view_track_layout.getMeasuredWidth(),
+		// image_view_track_layout.getMeasuredHeight());
+		int imgHeight = image_view_track_layout.getMeasuredHeight();
+		int imgWidth = image_view_track_layout.getMeasuredWidth();
+		int origImgHeight = image_view_track_layout.getDrawable()
+				.getIntrinsicHeight();
+		int origImgWidth = image_view_track_layout.getDrawable()
+				.getIntrinsicWidth();
+		double heightRatio = (double) imgHeight / (double) origImgHeight;
+		double widthRatio = (double) imgWidth / (double) origImgWidth;
+		double origRatioHW = (double) origImgHeight / (double) origImgWidth;
+		if (heightRatio < widthRatio) {
+			imgWidth = (int) (origImgWidth * heightRatio);
+			imgHeight = (int) (imgWidth * origRatioHW);
+		} else {
+			imgHeight = (int) (origImgHeight * widthRatio);
+			imgWidth = (int) (imgHeight * (1 / origRatioHW));
+		}
+
+		trainLayoutHeight = imgHeight;
+		trainLayoutWidth = imgWidth;
+
+	}
+
+	void setScaledLayout() {
+		// 243.84 old hardcoded height in cm for divisor
+		trainLayoutScaleHeight = trainLayoutHeight / (heightOfLayout * 2.54);
+		// 487.68 old hardcoded width in cm for divisor
+		trainLayoutScaleWidth = trainLayoutWidth / (widthOfLayout * 2.54);
+
+		Log.d(TAG_DEBUG, "Tracklayout height is: " + trainLayoutHeight
+				+ " Tracklayout width is:  " + trainLayoutWidth
+				+ " user input height in inches: " + heightOfLayout
+				+ " user input width in inches: " + widthOfLayout
+				+ " scale for height: " + trainLayoutScaleHeight
+				+ " scale for width: " + trainLayoutScaleWidth);
+	}
+
+	// UPDATED!
+	public String getPath(Uri uri) {
+		String[] projection = { MediaColumns.DATA };
+		@SuppressWarnings("deprecation")
+		Cursor cursor = managedQuery(uri, projection, null, null, null);
+		column_index = cursor.getColumnIndexOrThrow(MediaColumns.DATA);
+		cursor.moveToFirst();
+		imagePath = cursor.getString(column_index);
+
+		return cursor.getString(column_index);
 	}
 
 }
