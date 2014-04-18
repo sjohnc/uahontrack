@@ -54,7 +54,7 @@
             android:layout_below="@+id/imgViewBarcodes"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="144dp"
-            android:src="@drawable/train1" />
+            android:src="@drawable/ic_launcher" />
 
     </RelativeLayout>
 

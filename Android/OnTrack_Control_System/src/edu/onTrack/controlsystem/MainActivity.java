@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -283,9 +282,9 @@ public class MainActivity extends Activity {
 			return false;
 		}
 	};
-	
+
 	final View.OnClickListener switchClickListener = new View.OnClickListener() {
-		
+
 		@Override
 		public void onClick(View v) {
 			image_view touchedObject = (image_view) v;
@@ -298,7 +297,7 @@ public class MainActivity extends Activity {
 				switch_list[pos].setMyState(0);
 			}
 			locoNetMessagePrepAndSend();
-			
+
 		}
 	};
 
@@ -515,8 +514,10 @@ public class MainActivity extends Activity {
 		public String myType;
 		public int myIndex;
 		public int myState;
+		public int myOrientation;
 		float prevX;
 		float prevY;
+		public boolean moveable = true;
 
 		public image_view(Context context) {
 			super(context);
@@ -525,6 +526,8 @@ public class MainActivity extends Activity {
 
 			prevX = 0;
 			prevY = 0;
+			
+			myOrientation = 0;
 		}
 
 		void setMyIndex(int myID) {
@@ -541,6 +544,14 @@ public class MainActivity extends Activity {
 
 		int getMyIndex() {
 			return myIndex;
+		}
+		
+		int getOrientation() {
+			return myOrientation;
+		}
+		
+		void setOrientation(int orientation) {
+			myOrientation = orientation;
 		}
 
 		float getPrevX() {
@@ -874,8 +885,7 @@ public class MainActivity extends Activity {
 					final ImageView originalButton = (ImageView) dragEvent
 							.getLocalState();
 					final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-							originalButton.getWidth(),
-							originalButton.getHeight());
+							px, px);
 					params.topMargin = (int) dragEvent.getY()
 							- originalButton.getHeight() / 2;
 					params.leftMargin = (int) dragEvent.getX()
@@ -1115,7 +1125,7 @@ public class MainActivity extends Activity {
 														.setOnTouchListener(touchListener);
 												switch_list[switchIndex]
 														.setOnClickListener(switchClickListener);
-												
+
 												relLayout_Track
 														.addView(switch_list[switchIndex]);
 
@@ -1171,21 +1181,41 @@ public class MainActivity extends Activity {
 
 	public void addTrainAt(final RelativeLayout.LayoutParams params,
 			final String tag) {
+		
+		LinearLayout layout = new LinearLayout(MainActivity.this);
+		layout.setOrientation(LinearLayout.VERTICAL);
+
 		final EditText input = new EditText(MainActivity.this);
+		input.setHint("Train Address Number");
+		input.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		layout.addView(input);
+
+		final EditText angleInput = new EditText(MainActivity.this);
+		angleInput.setHint("Angle offset in Degrees");
+		angleInput.setInputType(InputType.TYPE_NUMBER_FLAG_SIGNED);
+		layout.addView(angleInput);
+		
 		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
 			// of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
 					.setTitle("Add A Train")
 					.setMessage("Please input the train number")
-					.setView(input)
+					.setView(layout)
 					.setPositiveButton("Ok",
 							new DialogInterface.OnClickListener() {
 								public void onClick(DialogInterface dialog,
 										int whichButton) {
-									int value;
+									int value = -1;
+									int angle = 0;
 									try {
 										value = Integer.parseInt(input
 												.getText().toString());
+										if (angleInput.getText().toString()
+												.length() != 0)
+											angle = Integer.parseInt(angleInput
+													.getText().toString());
+										else
+											angle = 0;
 										if (value > 0 && value <= 127) {
 											if (trainAddress[value] == NOT_VALID) {
 
@@ -1201,6 +1231,8 @@ public class MainActivity extends Activity {
 														.setTop(params.topMargin);
 												train_list[trainIndex]
 														.setMyState(speedArray.length);
+												train_list[trainIndex]
+														.setOrientation(angle);
 												Toast.makeText(
 														getBaseContext(),
 														"x: "
@@ -1422,7 +1454,7 @@ public class MainActivity extends Activity {
 		switch_list[switchIndex].setImageDrawable(layerDraw);
 
 	}
-	
+
 	public void setSwitchActive(Context context, int value, int switchIndex) {
 
 		TextDrawable txtDrawNumber = new TextDrawable(String.valueOf(value),
@@ -1843,13 +1875,16 @@ public class MainActivity extends Activity {
 		int endbyte = 0x0a;
 		int simpleSwitchAddress = 0;
 		boolean switchState = tglbtnSwitch.isChecked();
-		if (switchState){
+		if (switchState) {
 			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(1);
-			setSwitchActive(getBaseContext(), switch_list[spnSwitch.getSelectedItemPosition()].myIndex, spnSwitch.getSelectedItemPosition());
-		}
-		else{
+			setSwitchActive(getBaseContext(),
+					switch_list[spnSwitch.getSelectedItemPosition()].myIndex,
+					spnSwitch.getSelectedItemPosition());
+		} else {
 			switch_list[spnSwitch.getSelectedItemPosition()].setMyState(0);
-			setSwitchImage(getBaseContext(), switch_list[spnSwitch.getSelectedItemPosition()].myIndex, spnSwitch.getSelectedItemPosition());
+			setSwitchImage(getBaseContext(),
+					switch_list[spnSwitch.getSelectedItemPosition()].myIndex,
+					spnSwitch.getSelectedItemPosition());
 		}
 		byte[] outbuffer = new byte[6];
 
@@ -2092,8 +2127,9 @@ public class MainActivity extends Activity {
 			//
 			// if (yawNeg == -1)
 			// yawGyro *= -1;
+			
+			yawGyro = yawGyro + train_list[index].getOrientation();
 
-			float direction = 1;
 			if ((train_list[index].getMyState()) < speedArray.length) {
 				Log.d(TAG_DEBUG, "Setting reverse");
 				// direction = -1;
@@ -2113,7 +2149,7 @@ public class MainActivity extends Activity {
 			// float distance = (float) (0.36585 * tieCount * direction);
 
 			// caliper measured big track.
-			float distance = (float) (0.36979 * tieCount * direction);
+			float distance = (float) (0.36979 * tieCount);
 
 			// round track layout size
 			// float distance = (float) (0.34287 * tieCount * direction);
@@ -2304,41 +2340,43 @@ public class MainActivity extends Activity {
 
 	int barCodeReZero(final int imuTrainID, final int barCode) {
 
+		final int localTrainIndex = trainAddress[imuTrainID];
+		int localBarcodeIndex = barcodeAddress[barCode];
 		for (int i = 0; i < 4; i++)
 			imuBuffer[imuTrainID][1][i + 24] = 0;
 		Log.d(TAG_DEBUG, "Barcode is: " + barCode);
-		if (barcodeIndex > 0 && barCode != 3 && barCode != 4) {
-			if (barcodeAddress[barCode] != -1) {
-				final int left = barcode_list[barcodeAddress[barCode]]
+		if (barcodeIndex > 0 && /*barCode != 3 &&*/ barCode != 4) {
+			if (localBarcodeIndex != -1) {
+				final int left = barcode_list[localBarcodeIndex]
 						.getLeft();
-				final int top = barcode_list[barcodeAddress[barCode]].getTop();
+				final int top = barcode_list[localBarcodeIndex].getTop();
 				// train_list[trainAddress[imuTrainID]].setLeft(left);
 				// train_list[trainAddress[imuTrainID]].setTop(top);
 
 				final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-						train_list[barcodeAddress[barCode]].getWidth(),
-						train_list[barcodeAddress[barCode]].getHeight());
+						train_list[localTrainIndex].getWidth(),
+						train_list[localTrainIndex].getHeight());
 				params.height = px;
 				params.width = px;
 				params.topMargin = top;
 				params.leftMargin = left;
-				train_list[barcodeAddress[barCode]].post(new Runnable() {
+				train_list[localTrainIndex].post(new Runnable() {
 
 					@Override
 					public void run() {
-						train_list[barcodeAddress[barCode]]
+						train_list[localTrainIndex]
 								.setLayoutParams(params);
-						train_list[barcodeAddress[barCode]]
+						train_list[localTrainIndex]
 								.setLeft(params.leftMargin);
-						train_list[barcodeAddress[barCode]]
+						train_list[localTrainIndex]
 								.setTop(params.topMargin);
-						train_list[barcodeAddress[barCode]].bringToFront();
-						train_list[barcodeAddress[barCode]].invalidate();
-						train_list[barcodeAddress[barCode]].requestLayout();
+						train_list[localTrainIndex].bringToFront();
+						train_list[localTrainIndex].invalidate();
+						train_list[localTrainIndex].requestLayout();
 					}
 				});
-
-				return barcode_list[barcodeAddress[barCode]].getMyState();
+				
+					return barcode_list[localBarcodeIndex].getMyState();
 			}
 		}
 		return -1;

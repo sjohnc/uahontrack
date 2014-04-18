@@ -11,7 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentRight="true"
-        android:layout_toRightOf="@+id/relLayout_Track" >
+        android:layout_toRightOf="@+id/relLayout_Track"
+         >
 
         <edu.onTrack.controlsystem.VerticalSeekBar
             android:id="@+id/vertSeekBar"
@@ -28,8 +29,8 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
-            android:visibility="invisible"
-            android:text="@string/add"/>
+            android:text="@string/add"
+            android:visibility="invisible" />
 
         <TextView
             android:id="@+id/txtvwTrainTitle"
@@ -106,8 +107,8 @@
             android:layout_alignLeft="@+id/btnConnect"
             android:layout_alignRight="@+id/btnConnect"
             android:layout_marginBottom="25dp"
-            android:visibility="gone"
-            android:text="@string/sound" />
+            android:text="@string/sound"
+            android:visibility="gone" />
 
         <EditText
             android:id="@+id/edtxtTieCount"
@@ -117,8 +118,8 @@
             android:layout_below="@+id/tglbtnSwitch"
             android:layout_marginTop="52dp"
             android:ems="10"
-            android:visibility="gone"
-            android:inputType="numberSigned" >
+            android:inputType="numberSigned"
+            android:visibility="gone" >
 
             <requestFocus />
         </EditText>
@@ -129,10 +130,10 @@
             android:layout_height="wrap_content"
             android:layout_alignLeft="@+id/edtxtTieCount"
             android:layout_below="@+id/edtxtTieCount"
-            android:visibility="gone"
             android:layout_marginTop="34dp"
             android:ems="10"
-            android:inputType="numberSigned" />
+            android:inputType="numberSigned"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/txtViewTieCount"
@@ -140,9 +141,9 @@
             android:layout_height="wrap_content"
             android:layout_alignBaseline="@+id/edtxtTieCount"
             android:layout_alignBottom="@+id/edtxtTieCount"
-            android:visibility="gone"
             android:layout_toLeftOf="@+id/edtxtTieCount"
-            android:text="TieCount" />
+            android:text="TieCount"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/txtViewAngle"
@@ -150,9 +151,8 @@
             android:layout_height="wrap_content"
             android:layout_alignBottom="@+id/edtxtAngle"
             android:layout_alignLeft="@+id/txtViewTieCount"
-            
-            android:visibility="gone"
-            android:text="Angle" />
+            android:text="Angle"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnBarcode"
@@ -161,8 +161,8 @@
             android:layout_alignBottom="@+id/btnSound"
             android:layout_marginLeft="30dp"
             android:layout_toRightOf="@+id/btnSound"
-            android:visibility="gone"
-            android:text="Rezero" />
+            android:text="Rezero"
+            android:visibility="gone" />
 
         <EditText
             android:id="@+id/edtxtBarCode"
@@ -170,9 +170,9 @@
             android:layout_height="wrap_content"
             android:layout_below="@+id/tglbtnSwitch"
             android:layout_toLeftOf="@+id/btnBarcode"
-            android:visibility="gone"
             android:ems="10"
-            android:inputType="numberSigned" />
+            android:inputType="numberSigned"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/txtvwBarCode"
@@ -180,8 +180,8 @@
             android:layout_height="wrap_content"
             android:layout_alignBottom="@+id/edtxtBarCode"
             android:layout_alignRight="@+id/txtViewTieCount"
-            android:visibility="gone"
-            android:text="Barcode" />
+            android:text="Barcode"
+            android:visibility="gone" />
     </RelativeLayout>
 
     <!--
@@ -199,6 +199,7 @@
         android:layout_height="875dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
+        
         android:clipChildren="false"
         android:tag="relLayout_Track" >
 
@@ -221,70 +222,104 @@
         android:layout_alignParentLeft="true"
         android:layout_alignRight="@+id/relLayout_Track"
         android:layout_below="@id/relLayout_Track"
+        
         android:tag="tray" >
+
+        <TextView
+            android:id="@+id/txtvwTrayTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_centerInParent="true"
+            android:text="Drag and Drop Tray:" />
+
+        <TextView
+            android:id="@+id/txtvwAddTrain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:text="Add Train:" />
 
         <ImageView
             android:id="@+id/imgViewTrains"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:src="@drawable/train1" />
+            android:layout_toRightOf="@id/txtvwAddTrain"
+            android:src="@drawable/ic_train" />
+
+        <TextView
+            android:id="@+id/txtvwAddSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/imgViewTrains"
+            android:text="Add Switch:" />
 
         <ImageView
             android:id="@+id/imgViewSwitches"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:layout_toRightOf="@id/imgViewTrains"
-            android:src="@drawable/football" />
+            android:layout_toRightOf="@id/txtvwAddSwitch"
+            android:src="@drawable/ic_switch" />
+
+        <TextView
+            android:id="@+id/txtvwBarCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/imgViewSwitches"
+            android:text="Add Barcode:" />
 
         <ImageView
             android:id="@+id/imgViewBarcodes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:layout_toRightOf="@id/imgViewSwitches"
-            android:src="@android:drawable/btn_star" />
+            android:layout_toRightOf="@id/txtvwBarCode"
+            android:src="@drawable/ic_barcode" />
 
         <Button
             android:id="@+id/btnLocoPacket1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toRightOf="@id/imgViewBarcodes"
-            android:visibility="gone"
-            android:text="Packet 1" />
+            android:text="Packet 1"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnLocoPacket2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toRightOf="@id/btnLocoPacket1"
-            android:visibility="gone"
-            android:text="Packet 2" />
+            android:text="Packet 2"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnLocoPacket3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toRightOf="@id/btnLocoPacket2"
-            android:visibility="gone"
-            android:text="Packet 3" />
+            android:text="Packet 3"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnLocoTrackOn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toRightOf="@id/btnLocoPacket3"
-            android:visibility="gone"
-            android:text="Track On" />
+            android:text="Track On"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnLocoTrackOff"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toRightOf="@id/btnLocoTrackOn"
-            android:visibility="gone"
-            android:text="Track Off" />
+            android:text="Track Off"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/addLayout"
