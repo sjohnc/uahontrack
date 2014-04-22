@@ -1949,7 +1949,6 @@ public class MainActivity extends Activity {
 								byte readByte = (byte) (btInStream.read() & 0xff);
 								while (readByte != 10) {
 									readByte = (byte) (btInStream.read() & 0xff);
-
 								}
 								inbuffer[0] = 10;
 								for (int i = 1; i < IMU_DATA_SIZE; i++) {
@@ -2128,10 +2127,10 @@ public class MainActivity extends Activity {
 
 		final int imuBarCode = (barCodeByte & 0xff);
 
-		if (imuBarCode != 0) {
+		if (imuBarCode != 0 || barCodeByte != 0) {
 			@SuppressWarnings("unused")
 			int barCodeYaw = barCodeReZero(imuTrainID, imuBarCode);
-			Log.d(TAG_DEBUG, "IMU Barcode: " + imuBarCode);
+			Log.d(TAG_DEBUG, "barcode is: IMU Barcode: " + imuBarCode + " read byte as " + barCodeByte);
 
 			// if (barCodeYaw != -1) yawOffset = (int) (gyroYaw - barCodeYaw);
 			// not currently working as it should with trains having a yaw
@@ -2152,7 +2151,7 @@ public class MainActivity extends Activity {
 		int tieCount = curTieCount - prevTieCount;
 		if (tieCount < 0) {
 			tieCount = curTieCount;
-			Log.d(TAG_DEBUG, "barcode is: tie count error" + curTieCount + " "
+			Log.d(TAG_DEBUG, "barcode is: tie count error " + curTieCount + " "
 					+ prevTieCount);
 		}
 
@@ -2180,8 +2179,7 @@ public class MainActivity extends Activity {
 	}
 
 	int barCodeReZero(final int imuTrainID, final int barCode) {
-		if (valid) {
-			
+		
 			final int localTrainIndex = trainAddress[imuTrainID];
 			if (barCode < MAX_BARCODES && localTrainIndex < MAX_TRAINS) {
 				int localBarcodeIndex = barcodeAddress[barCode];
@@ -2223,7 +2221,7 @@ public class MainActivity extends Activity {
 					}
 				}
 			}
-		}
+		
 		return -1;
 
 	}
