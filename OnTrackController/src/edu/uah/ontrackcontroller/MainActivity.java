@@ -20,57 +20,78 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.util.Log;
+import android.view.DragEvent;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.DragShadowBuilder;
+import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-public class MainActivity extends Activity implements OnTouchListener {
+public class MainActivity extends Activity implements OnClickListener, OnTouchListener {
 	image_view track_Layout;
 
-	LinearLayout layout;
+	RelativeLayout displayLayout;
 	Button btnAdd;
 	Button btnAddSwitch;
 	Button btnTieCount;
 	Button btnConnect;
+	ImageView ImgViewTrains;
+	ImageView ImgViewSwitches;
+	ImageView ImgViewBarcodes;
+
 	ToggleButton tglbtnSwitch;
 	EditText edtxtTieCount;
 
 	final int MAX_TRAINS = 10;
 	final int MAX_SWITCHES = 50;
 	final int MAX_BUFFER = 10;
-	final int IMU_DATA_SIZE = 34;
+	final int IMU_DATA_SIZE = 31;
 	final int CURRENT_DATA_SIZE = 3;
 	final int MAX_ADDRESS = 127;
 	final int NOT_VALID = -1;
 	private static final String TAG = "OnTrack Debug";
 	protected static final byte CURRENT_HEADER = 11;
 	protected static final byte IMU_HEADER = 10;
+	final String TAG_TRACK_LAYOUT = "track_layout";
+	final String TAG_TRAY_LAYOUT = "tray_layout";
+
+	final String TAG_BARCODES = "barcode";
+	final String TAG_SWITCHES = "switch";
+	final String TAG_TRAINS = "train";
 
 	byte[][] currentBuffer = new byte[MAX_BUFFER][CURRENT_DATA_SIZE];
 	byte[][][] imuBuffer = new byte[MAX_TRAINS][MAX_BUFFER][IMU_DATA_SIZE];
 	int currentBufferIndex = 0;
 	int imuBufferIndex = 0;
 	int imuTrainIndex = 0;
-
+	RelativeLayout trayLayout;
 	TextView txtvwStatus; // textview for Status
 	Spinner spnTrain; // spinner for train selection
 	Spinner spnSwitch;
@@ -86,6 +107,8 @@ public class MainActivity extends Activity implements OnTouchListener {
 	int[] switchNum;
 	int[] trainAddress;
 	int[] switchAddress;
+	double xTouch = 0.0;
+	double yTouch = 0.0;
 	// image_view.trainData[] trainData = new image_view.trainData[MAX_TRAINS];
 	int trainIndex = 0; // current index to train array
 	int switchIndex = 0;
@@ -108,7 +131,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 	Boolean longPress = false;
 	int timeshere =0;
 
-	Thread currentThread = null;
+	Thread IMUThread = null;
 	boolean currentRunning = false;
 
 	Handler handler = new Handler();
@@ -129,7 +152,6 @@ public class MainActivity extends Activity implements OnTouchListener {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String action = intent.getAction();
-
 			if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
 				// Device has disconnected
 				btconnected = false;
@@ -160,10 +182,10 @@ public class MainActivity extends Activity implements OnTouchListener {
 		setContentView(R.layout.activity_main);
 		track_Layout = new image_view(this);
 
-		layout = (LinearLayout) findViewById(R.id.displayLayout);
-
-		layout.addView(track_Layout);
-		track_Layout.setOnTouchListener(this);
+		displayLayout = (RelativeLayout) findViewById(R.id.displayLayout);
+		displayLayout.addView(track_Layout);
+		//track_Layout.setOnClickListener(this);
+		//track_Layout.setOnTouchListener(this);
 		BTSetup(); // initialize all bluetooth settings.
 		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		getWindow().setSoftInputMode(
@@ -193,7 +215,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 			Log.d(TAG, "BT is null");
 
 		}
-		filters();
+		//filters();
 	}
 
 	private void init() {
@@ -201,6 +223,73 @@ public class MainActivity extends Activity implements OnTouchListener {
 		btnConnect.setText("Connect");
 		vertSeekBar = (VerticalSeekBar) findViewById(R.id.vertSeekBar);
 		tglbtnSwitch = (ToggleButton) findViewById(R.id.tglbtnSwitch);
+		ImgViewBarcodes = (ImageView) findViewById(R.id.ImgViewBarcodes);
+		ImgViewSwitches = (ImageView) findViewById(R.id.ImgViewSwitches);
+		ImgViewTrains = (ImageView) findViewById(R.id.ImgViewTrains);
+
+		ImgViewBarcodes.setTag(TAG_BARCODES);
+		ImgViewSwitches.setTag(TAG_SWITCHES);
+		ImgViewTrains.setTag(TAG_TRAINS);
+		trayLayout = (RelativeLayout) findViewById(R.id.trayLayout);
+		ImgViewBarcodes.setOnLongClickListener(clickListener);
+		ImgViewSwitches.setOnLongClickListener(clickListener);
+		ImgViewTrains.setOnLongClickListener(clickListener);
+
+		displayLayout.setTag(TAG_TRACK_LAYOUT);
+		trayLayout.setTag(TAG_TRAY_LAYOUT);
+
+		View.OnDragListener dragListener = new View.OnDragListener() {
+
+			@Override
+			public boolean onDrag(View targetView, DragEvent dragEvent) {
+				int action = dragEvent.getAction();
+
+				switch(action) 
+				{
+				case DragEvent.ACTION_DROP:
+
+					final ImageView originalImgView = (ImageView) dragEvent.getLocalState();
+					final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(originalImgView.getWidth(),originalImgView.getHeight());
+					params.topMargin = (int) dragEvent.getY() - originalImgView.getHeight()/2;
+					params.leftMargin = (int) dragEvent.getX() - originalImgView.getWidth()/2;
+					ViewGroup parentView = (ViewGroup) originalImgView.getParent();
+
+					if(parentView.getTag().equals(TAG_TRAY_LAYOUT) && targetView.getTag().equals(TAG_TRACK_LAYOUT)){
+						//moving from tray to track.
+						ImageView ImgView = new ImageView(getBaseContext());
+						ImgView.setLayoutParams(params);
+						ImgView.setOnLongClickListener(clickListener);
+						ImgView.setTag(originalImgView.getTag());
+
+
+						if(originalImgView.getTag().equals(TAG_TRAINS)){
+							ImgView.setImageBitmap(BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.train1));
+							addTrainAt();
+						}
+						else if(originalImgView.getTag().equals(TAG_SWITCHES)){
+							ImgView.setImageBitmap(BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.football));
+							addSwitchAt(params.leftMargin, params.topMargin);
+						}
+						else if(originalImgView.getTag().equals(TAG_BARCODES)){
+							ImgView.setImageBitmap(BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.ic_launcher));
+						}
+
+						displayLayout.addView(ImgView);
+					}
+					else if(parentView.getTag().equals(TAG_TRACK_LAYOUT) && targetView.getTag().equals(TAG_TRACK_LAYOUT)){
+						//moving inside the track to the track.
+						originalImgView.setLayoutParams(params);
+					}
+
+					break;
+				}
+				return true;
+			}
+		};
+
+		displayLayout.setOnDragListener(dragListener);
+		trayLayout.setOnDragListener(dragListener);
+
 		vertSeekBar
 		.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
@@ -224,12 +313,11 @@ public class MainActivity extends Activity implements OnTouchListener {
 					btnSendListener();
 			}
 		});
-
 		track_Layout.setOnLongClickListener(new View.OnLongClickListener() {
 
 			@Override
 			public boolean onLongClick(View v) {
-				longPress = true;
+				Toast.makeText(getBaseContext(), "Long Click Listener", Toast.LENGTH_LONG).show();
 				return false;
 			}
 		});
@@ -240,6 +328,8 @@ public class MainActivity extends Activity implements OnTouchListener {
 		spnTrain = (Spinner) findViewById(R.id.spnTrainSelect);
 		spnSwitch = (Spinner) findViewById(R.id.spnSwitchSel);
 		txtvwStatus = (TextView) findViewById(R.id.txtvwStatus);
+
+
 		// edtxtTieCount = (EditText)findViewById(R.id.edtxtTieCount);
 
 		trainList = new ArrayList<String>();
@@ -251,7 +341,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 		for (int i = 0; i < MAX_ADDRESS; i++){
 			trainAddress[i] = NOT_VALID;
 			switchAddress[i] = NOT_VALID;
-			
+
 		}
 		for (int i = 0; i < MAX_TRAINS; i++){
 			trainNum[i] = NOT_VALID;
@@ -342,22 +432,21 @@ public class MainActivity extends Activity implements OnTouchListener {
 
 	}
 
+	final View.OnLongClickListener clickListener = new View.OnLongClickListener() {
+
+		@Override
+		public boolean onLongClick(View view) {
+
+			View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
+			view.startDrag(null, shadowBuilder, view, 0);
+			return false;
+		}
+	};
+
+
 	public void btnSendListener() {
-		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-			// to
-			// see
-			// if
-			// it
-			// is
-			// not
-			// null,
-			// then
-			// see
-			// if
-			// it
-			// is
-			// connected.
-			// testing one more time.
+		if (btconnected && btSocket != null && btSocket.isConnected()) { 
+			// check to see if it is not null, then see if it is connected 
 			int address = 0;
 			int speed = 0;
 			int commandbits = 0;
@@ -397,23 +486,11 @@ public class MainActivity extends Activity implements OnTouchListener {
 		int simpleSwitchAddress = 0;
 		byte[] outbuffer = new byte[6];
 
-		if (btconnected && btSocket != null && btSocket.isConnected()) { // check
-			// to
-			// see
-			// if
-			// it
-			// is
-			// not
-			// null,
-			// then
-			// see
-			// if
-			// it
-			// is
-			// connected.
+		if (btconnected && btSocket != null && btSocket.isConnected()) { 
 
-			simpleSwitchAddress = switchNum[spnSwitch
-			                                    .getSelectedItemPosition()];
+			// check to see if it is not null, then see if it is connected 
+
+			simpleSwitchAddress = switchNum[spnSwitch.getSelectedItemPosition()];
 			address = simpleSwitchAddress & 0x7f;
 			command = ((simpleSwitchAddress >> 7) & 0x0f);
 			if (tglbtnSwitch.isChecked())
@@ -508,8 +585,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 		 */
 	}
 
-	public void btnAddListener() {
-
+	public void addTrainAt(){
 		final EditText input = new EditText(MainActivity.this);
 		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
 			// of trains hasn't been exceeded.
@@ -529,11 +605,12 @@ public class MainActivity extends Activity implements OnTouchListener {
 							if(trainAddress[value] == NOT_VALID){
 								trainNum[trainIndex] = value;
 								trainAddress[value] = trainIndex;
+								prepareIMUBuffer(value);
 								track_Layout.setTrainImage(
 										getBaseContext(), value,
 										trainIndex);
 								addTrainToLayout(value, true);
-								
+
 								trainList.add("Train " + value);
 
 								dataAdapter.notifyDataSetChanged();
@@ -560,6 +637,83 @@ public class MainActivity extends Activity implements OnTouchListener {
 					// Do nothing.
 				}
 			}).show();
+		}
+	}
+
+	public void btnAddListener() {
+
+		final EditText input = new EditText(MainActivity.this);
+		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
+			// of trains hasn't been exceeded.
+			new AlertDialog.Builder(MainActivity.this)
+			.setTitle("Add A Train")
+			.setMessage("Please input the train number")
+			.setView(input)
+			.setPositiveButton("Ok",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					int value;
+					try {
+						value = Integer.parseInt(input
+								.getText().toString());
+						if (value >= 0 && value <= 127) {
+							if(trainAddress[value] == NOT_VALID){
+								trainNum[trainIndex] = value;
+								trainAddress[value] = trainIndex;
+								prepareIMUBuffer(value);
+								track_Layout.setTrainImage(
+										getBaseContext(), value,
+										trainIndex);
+								addTrainToLayout(value, true);
+
+								trainList.add("Train " + value);
+
+								dataAdapter.notifyDataSetChanged();
+								spnTrain.setSelection(trainIndex);
+								trainIndex++;
+							} 
+							else {
+								Toast.makeText(getBaseContext(), "Train already exists", Toast.LENGTH_SHORT).show();
+
+							}
+						}
+
+					} catch (NumberFormatException nfe) {
+						System.out.println("Could not parse "
+								+ nfe);
+					}
+
+				}
+			})
+			.setNegativeButton("Cancel",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,
+						int whichButton) {
+					// Do nothing.
+				}
+			}).show();
+		}
+	}
+
+	public void prepareIMUBuffer(int trainID){
+		for (int i = 0; i < 4; i++) {
+			imuBuffer[trainID][0][i] = 0;
+			imuBuffer[trainID][0][i + 4] = 0;
+			imuBuffer[trainID][0][i + 8] = 0;
+			imuBuffer[trainID][0][i + 12] = 0;
+			imuBuffer[trainID][0][i + 16] = 0;
+			imuBuffer[trainID][0][i + 20] = 0;
+			imuBuffer[trainID][0][i + 24] = 0;
+		}
+		for (int i = 0; i < 4; i++) {
+			imuBuffer[trainID][1][i] = 0;
+			imuBuffer[trainID][1][i + 4] = 0;
+			imuBuffer[trainID][1][i + 8] = 0;
+			imuBuffer[trainID][1][i + 12] = 0;
+			imuBuffer[trainID][1][i + 16] = 0;
+			imuBuffer[trainID][1][i + 20] = 0;
+			imuBuffer[trainID][1][i + 24] = 0;
 		}
 	}
 
@@ -624,20 +778,23 @@ public class MainActivity extends Activity implements OnTouchListener {
 		track_Layout.invalidate();
 	}
 
-	public void updateTrain(int trainID, int tieCount/*
-	 * , float xAccel, float
-	 * yAccel, float yawGyro
-	 */) {
-		float distance = (float) (0.36585366 * (float) tieCount);
+	public void updateTrain(int trainID, int tieCount, float xAccel, float yAccel, float yawGyro, float yawDifference) {
+
+
 		int index = trainAddress[trainID];
-		Log.d(TAG, "Train in list #" + trainID);
-		// track_Layout.xCoordinate.set(trainID,(int)
-		// (track_Layout.xCoordinate.get(trainID) + distance));
-		track_Layout.trainInfo[index].setCoordinates(
-				track_Layout.trainInfo[index].getxCoordinate() + distance,
-				track_Layout.trainInfo[index].getyCoordinate());
-		// track_Layout.yCoordinate.set(trainID,(int) yAccel);
-		// track_Layout.speed.set(trainID, (int)velocity);
+		if(index != -1){
+			Log.d(TAG, "Train in list #" + trainID);
+			float arcLength = (float) (0.36585366 * (float) tieCount);
+			float radOffset = (float) (yawGyro * 0.0174532925);
+			float distance = (float)(arcLength/radOffset);
+			float xCord = (float) (distance * Math.cos(radOffset));
+			xCord += track_Layout.trainInfo[index].getxCoordinate();
+			float yCord = (float) (distance * Math.sin(radOffset));
+			yCord += track_Layout.trainInfo[index].getyCoordinate();
+
+			track_Layout.trainInfo[index].setCoordinates(xCord,yCord);
+
+		}
 	}
 
 	private class BTConnect extends AsyncTask<Void, Void, Void> {
@@ -817,8 +974,8 @@ public class MainActivity extends Activity implements OnTouchListener {
 		}
 	}
 
-	private void createCurrentThread() { // rename createBTRecieveThread
-		currentThread = new Thread(new Runnable() {
+	private void createIMUThread() { // rename createBTRecieveThread
+		IMUThread = new Thread(new Runnable() {
 			public void run() {
 				boolean excep = false;
 				while (!excep) {
@@ -847,19 +1004,17 @@ public class MainActivity extends Activity implements OnTouchListener {
 								bytes = btInStream.available();
 								// byte[] header = new byte[1];
 
-								if (bytes > 0) {
-									Log.d(TAG,
-											"Inside createCurrentThread and bytes are: "
-													+ bytes);
+								if (bytes >= IMU_DATA_SIZE) {
+									Log.d(TAG,"Inside createIMUThread and bytes are: " + bytes);
 									// receive first byte
 									inbuffer = new byte[bytes];
-									Log.d(TAG, "number of bytes " + bytes);
+									//Log.d(TAG, "number of bytes " + bytes);
 									btInStream.read(inbuffer, 0,
 											inbuffer.length);
 									// bytes = btInStream.available();
-									Log.d(TAG, "Received message.");
+									//Log.d(TAG, "Received message.");
 
-									if (bytes == CURRENT_DATA_SIZE
+									/*if (bytes == CURRENT_DATA_SIZE
 											&& inbuffer[0] == CURRENT_HEADER) {
 
 										// btInStream.read(inbuffer, 0, bytes);
@@ -873,7 +1028,8 @@ public class MainActivity extends Activity implements OnTouchListener {
 										// spawn current calc thread.
 										if (currentBufferIndex >= MAX_BUFFER)
 											updateCurrent();
-									} else if (bytes == IMU_DATA_SIZE
+									} else */
+									if (bytes == IMU_DATA_SIZE
 											&& inbuffer[0] == IMU_HEADER) {
 										// inbuffer = new byte[bytes];
 
@@ -904,71 +1060,101 @@ public class MainActivity extends Activity implements OnTouchListener {
 	}
 
 	private void updateIMU(final int imuTrainID) {
-		new Thread(new Runnable() {
-			public void run() {
+		//		new Thread(new Runnable() {
+		//			public void run() {
+		Log.d(TAG, "Inside updateIMU function.");
+		byte[] acelXBytes = new byte[4];
+		byte[] acelYBytes = new byte[4];
+		byte[] acelZBytes = new byte[4];
+		byte[] gyroYawBytes = new byte[4];
+		byte[] gyroPitchBytes = new byte[4];
+		byte[] gyroRollBytes = new byte[4];
+		byte[] tieCountBytes = new byte[4];
+		byte[] prevGyroYawBytes = new byte[4];
+		byte[] prevTieCountBytes = new byte[4];
+		byte[] barCodeBytes = new byte[1];
 
-				byte[] acelXBytes = new byte[4];
-				byte[] acelYBytes = new byte[4];
-				byte[] acelZBytes = new byte[4];
-				byte[] gyroYawBytes = new byte[4];
-				byte[] gyroPitchBytes = new byte[4];
-				byte[] gyroRawBytes = new byte[4];
-				byte[] tieCountBytes = new byte[4];
-				byte[] imuChecksumBytes = new byte[4];
 
-				for (int i = 0; i < 4; i++) {
-					acelXBytes[i] = imuBuffer[imuTrainID][0][i];
-					acelYBytes[i] = imuBuffer[imuTrainID][0][i + 4];
-					acelZBytes[i] = imuBuffer[imuTrainID][0][i + 8];
-					gyroYawBytes[i] = imuBuffer[imuTrainID][0][i + 12];
-					gyroPitchBytes[i] = imuBuffer[imuTrainID][0][i + 16];
-					gyroRawBytes[i] = imuBuffer[imuTrainID][0][i + 20];
-					tieCountBytes[i] = imuBuffer[imuTrainID][0][i + 24];
-					imuChecksumBytes[i] = imuBuffer[imuTrainID][0][i + 28];
 
-				}
-				Log.d(TAG, "Inside updateIMU function.");
 
-				final float acelX = ByteBuffer.wrap(acelXBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
-				final float acelY = ByteBuffer.wrap(acelYBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
-				final float acelZ = ByteBuffer.wrap(acelZBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
 
-				final float gyroYaw = ByteBuffer.wrap(gyroYawBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
 
-				final float gyroPitch = ByteBuffer.wrap(gyroPitchBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		for (int i = 0; i < 4; i++) {
+			acelXBytes[i] = imuBuffer[imuTrainID][0][i];
+			acelYBytes[i] = imuBuffer[imuTrainID][0][i + 4];
+			acelZBytes[i] = imuBuffer[imuTrainID][0][i + 8];
+			gyroRollBytes[i] = imuBuffer[imuTrainID][0][i + 12];
+			gyroPitchBytes[i] = imuBuffer[imuTrainID][0][i + 16];
+			gyroYawBytes[i] = imuBuffer[imuTrainID][0][i + 20];
+			prevGyroYawBytes[i] = imuBuffer[imuTrainID][1][i + 20];
+			tieCountBytes[i] = imuBuffer[imuTrainID][0][i + 24];
+			prevTieCountBytes[i] = imuBuffer[imuTrainID][1][i + 24];
 
-				final float gyroRaw = ByteBuffer.wrap(gyroRawBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		}
+		for (int i = 0; i < 4; i++) {
+			imuBuffer[imuTrainID][1][i + 20] = imuBuffer[imuTrainID][0][i + 20];
+			imuBuffer[imuTrainID][1][i + 24] = imuBuffer[imuTrainID][0][i + 24];
+		}
 
-				final int tieCount = ByteBuffer.wrap(tieCountBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getInt();
-				final float imuChecksum = ByteBuffer.wrap(imuChecksumBytes)
-						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		barCodeBytes[0] = imuBuffer[imuTrainID][0][28];
 
-				/*
-				 * txtvwIMUData.post(new Runnable() {
-				 * 
-				 * @Override public void run() { txtvwIMUData.setText("Train #"
-				 * + imuTrainID + ": acel x" + String.valueOf(acelX) +
-				 * ", acel y " + String.valueOf(acelY) + ", acel z " +
-				 * String.valueOf(acelZ) + ", gyroYaw " +
-				 * String.valueOf(gyroYaw) + ", gyroPitch " +
-				 * String.valueOf(gyroPitch) + ", gyroRaw " +
-				 * String.valueOf(gyroRaw) + ", tieCount " +
-				 * String.valueOf(tieCount) + ", imuChecksum " +
-				 * String.valueOf(imuChecksum));
-				 * 
-				 * } });
-				 */
-			}
+
+		final float acelX = ByteBuffer.wrap(acelXBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		final float acelY = ByteBuffer.wrap(acelYBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		final float acelZ = ByteBuffer.wrap(acelZBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+
+		final float gyroYaw = ByteBuffer.wrap(gyroYawBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+
+		final float gyroPitch = ByteBuffer.wrap(gyroPitchBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+
+		final float gyroRoll = ByteBuffer.wrap(gyroRollBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+
+		final int tieCount = (ByteBuffer.wrap(tieCountBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getInt()) - (ByteBuffer.wrap(prevTieCountBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getInt());
+
+		final float prevGyroYaw = ByteBuffer.wrap(prevGyroYawBytes)
+				.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+
+
+		final int imuBarCode = (barCodeBytes[0] & 0xff);
+
+		updateTrain(3, tieCount, acelX, acelY, gyroYaw, (gyroYaw - prevGyroYaw));
+
+		Log.d(TAG, "Train #"
+				+ imuTrainID + ": acel x" + String.valueOf(acelX) +
+				", acel y " + String.valueOf(acelY) + ", acel z " +
+				String.valueOf(acelZ) + ", gyroYaw " +
+				String.valueOf(gyroYaw) + ", gyroPitch " +
+				String.valueOf(gyroPitch) + ", gyroRoll " +
+				String.valueOf(gyroRoll) + ", tieCount " +
+				String.valueOf(tieCount) + ", imuBarCode " +
+				String.valueOf(imuBarCode));
+
+		txtvwStatus.post(new Runnable() { 
+			@Override public void run() { txtvwStatus.setText("Train #"
+					+ imuTrainID + ": acel x" + String.valueOf(acelX) +
+					", acel y " + String.valueOf(acelY) + ", acel z " +
+					String.valueOf(acelZ) + ", gyroYaw " +
+					String.valueOf(gyroYaw) + ", gyroPitch " +
+					String.valueOf(gyroPitch) + ", gyroRoll " +
+					String.valueOf(gyroRoll) + ", tieCount " +
+					String.valueOf(tieCount) + ", imuBarCode " +
+					String.valueOf(imuBarCode));
+
+			} 
 		});
 
 	}
+	//		});
+	//
+	//	}
 
 	private void updateCurrent() {
 		new Thread(new Runnable() {
@@ -1053,9 +1239,9 @@ public class MainActivity extends Activity implements OnTouchListener {
 	@Override
 	public void onResume() {
 		super.onResume();
-		if (currentThread == null) {
-			createCurrentThread();
-			currentThread.start();
+		if (IMUThread == null) {
+			createIMUThread();
+			IMUThread.start();
 		}
 		Log.d(TAG, "...onResume - try connect...");
 
@@ -1071,7 +1257,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 
 	@Override
 	public void onPause() {
-		Log.d(TAG, "...In onPause()... thread is: " + currentThread.isAlive());
+		Log.d(TAG, "...In onPause()... thread is: " + IMUThread.isAlive());
 		if (btOutStream != null) {
 			try {
 				btOutStream.flush();
@@ -1125,7 +1311,7 @@ public class MainActivity extends Activity implements OnTouchListener {
 		}
 	}
 
-	public void addSwitchAt(final float x, final float y){
+	public void addSwitchAt(final double x, final double y){
 		final EditText input = new EditText(MainActivity.this);
 		if (switchIndex < MAX_SWITCHES) { // Checks to make sure the maximum
 			// number of trains hasn't been
@@ -1146,12 +1332,10 @@ public class MainActivity extends Activity implements OnTouchListener {
 							if(switchAddress[value] == NOT_VALID){
 								switchNum[switchIndex] = value;
 								switchAddress[value] = switchIndex;
-								track_Layout.setSwitchImage(
-										getBaseContext(), value,
-										switchIndex);
+								track_Layout.setSwitchImage(getBaseContext(), value, switchIndex);
 								track_Layout.switchInfo[switchIndex].address = value;
 								Log.d(TAG, "Added Switch at x: " + x + " y: " + y);
-								track_Layout.switchInfo[switchIndex].setCoordinates(x,y);
+								track_Layout.switchInfo[switchIndex].setCoordinates((float)x, (float) y);
 								switchList.add("Switch " + value);
 								switchAdapter.notifyDataSetChanged();
 								spnSwitch.setSelection(switchIndex);
@@ -1192,11 +1376,11 @@ public class MainActivity extends Activity implements OnTouchListener {
 				int removeIndex = trainAddress[address];
 				for(int i = removeIndex; i < trainIndex; i++){
 					if(trainNum[i+1] != NOT_VALID){
-						
+
 						trainNum[i] = trainNum[i+1];
 						trainAddress[trainNum[i]] = i;
 						track_Layout.trainInfo[i].address = track_Layout.trainInfo[i+1].address;
-						track_Layout.trainInfo[i].mBitmapMove = track_Layout.trainInfo[i+1].mBitmapMove;
+						track_Layout.trainInfo[i].myImgView = track_Layout.trainInfo[i+1].myImgView;
 						track_Layout.trainInfo[i].speed = track_Layout.trainInfo[i+1].speed;
 						track_Layout.trainInfo[i].xCoordinate = track_Layout.trainInfo[i+1].xCoordinate;
 						track_Layout.trainInfo[i].yCoordinate = track_Layout.trainInfo[i+1].yCoordinate;
@@ -1214,9 +1398,9 @@ public class MainActivity extends Activity implements OnTouchListener {
 			}
 
 		}).setNegativeButton(R.string.denyDelete, null).show();
-		
+
 	}
-	
+
 	public void removeSwitch(final int address){
 		new AlertDialog.Builder(this)
 		.setIcon(android.R.drawable.ic_dialog_alert)
@@ -1231,11 +1415,11 @@ public class MainActivity extends Activity implements OnTouchListener {
 				int removeIndex = switchAddress[address];
 				for(int i = removeIndex; i < switchIndex; i++){
 					if(switchNum[i+1] != NOT_VALID){
-						
+
 						switchNum[i] = switchNum[i+1];
 						switchAddress[switchNum[i]] = i;
 						track_Layout.switchInfo[i].address = track_Layout.switchInfo[i+1].address;
-						track_Layout.switchInfo[i].mBitmapMove = track_Layout.switchInfo[i+1].mBitmapMove;
+						track_Layout.switchInfo[i].myImgView = track_Layout.switchInfo[i+1].myImgView;
 						track_Layout.switchInfo[i].speed = track_Layout.switchInfo[i+1].speed;
 						track_Layout.switchInfo[i].xCoordinate = track_Layout.switchInfo[i+1].xCoordinate;
 						track_Layout.switchInfo[i].yCoordinate = track_Layout.switchInfo[i+1].yCoordinate;
@@ -1253,25 +1437,25 @@ public class MainActivity extends Activity implements OnTouchListener {
 			}
 
 		}).setNegativeButton(R.string.denyDelete, null).show();
-		
+
 	}
 
-	public int isTrainClicked(float x, float y){
+	public int isTrainClicked(double x, double y){
 		for(int i = 0; i < trainIndex; i++){
-//			Log.d(TAG, i + " Train is at x: " + track_Layout.trainInfo[i].getxCoordinate());
-//			Log.d(TAG, i + " Train is at y: " + track_Layout.trainInfo[i].getyCoordinate());
+			//			Log.d(TAG, i + " Train is at x: " + track_Layout.trainInfo[i].getxCoordinate());
+			//			Log.d(TAG, i + " Train is at y: " + track_Layout.trainInfo[i].getyCoordinate());
 			if( (Math.abs(track_Layout.trainInfo[i].getxCoordinate() - x) < 50) && (Math.abs(track_Layout.trainInfo[i].getyCoordinate() - y) < 50)){
 				int address = track_Layout.trainInfo[i].address;
 				int position = trainAddress[address];
 				//Log.d(TAG, "Touched at train # " + address);
-//				Log.d(TAG, "Change spinner to position # " + position);
+				//				Log.d(TAG, "Change spinner to position # " + position);
 				spnTrain.setSelection(position);
 				return address;
 			}
 		}
 		return 0;
 	}
-	public int isSwitchClicked(float x, float y){
+	public int isSwitchClicked(double x, double y){
 		for(int i = 0; i < switchIndex; i++){
 			//Log.d(TAG, i + " Switch is at x: " + track_Layout.switchInfo[i].getxCoordinate());
 			//Log.d(TAG, i + " Switch is at y: " + track_Layout.switchInfo[i].getyCoordinate());
@@ -1289,12 +1473,32 @@ public class MainActivity extends Activity implements OnTouchListener {
 
 	@Override
 	public boolean onTouch(View v, MotionEvent event) {
-//		Log.d(TAG, "Touched somewhere");
-		float x = Math.round(event.getX());
-		float y = Math.round(event.getY());
+		Log.d(TAG, "Touched somewhere");
+		xTouch = Math.round(event.getX());
+		yTouch = Math.round(event.getY());
+
+		/*if(event.getAction() == MotionEvent.ACTION_DOWN){
+				longPress = false;
+			ClipData data = ClipData.newPlainText("", "");
+			DragShadowBuilder shadowBuilder = new View.DragShadowBuilder();
+			Canvas testcanvas = new Canvas(BitmapFactory.decodeResource(this.getResources(),R.drawable.football));
+			shadowBuilder.onDrawShadow(testcanvas);
+			track_Layout.startDrag(data, shadowBuilder, track_Layout, 0);
+		}*/
+
+		//select spinner based on switch/train touched.
+
+		return false;
+	}
+
+	@Override
+	public void onClick(View v) {
+		// TODO Auto-generated method stub
+		double x = xTouch;
+		double y = yTouch;
 		int trainTouched = isTrainClicked(x, y);
 		int switchTouched = isSwitchClicked(x, y);
-//		Log.d(TAG, "Touched at x: " + x + " y: " + y);
+		Log.d(TAG, "Clicked at x: " + x + " y: " + y);
 		if(longPress){
 			longPress = false;
 			if(trainTouched != 0){
@@ -1306,12 +1510,10 @@ public class MainActivity extends Activity implements OnTouchListener {
 				Log.d(TAG, "Long press on switch");
 			}
 			else{
-				addSwitchAt(x, y);
+				//addSwitchAt(x, y);
 			}
-			return false;
 		}
-		//select spinner based on switch/train touched.
-
-		return false;
 	}
+
+
 }

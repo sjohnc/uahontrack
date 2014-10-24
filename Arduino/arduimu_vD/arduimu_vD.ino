@@ -52,7 +52,7 @@
 #define OUTPUTMODE 1
 
 #define PRINT_DCM 0     //Will print the whole direction cosine matrix
-#define PRINT_ANALOGS 0 //Will print the analog raw data
+#define PRINT_ANALOGS 1 //Will print the analog raw data
 #define PRINT_EULER 1   //Will print the Euler angles Roll, Pitch and Yaw
 #define PRINT_GPS 0     //Will print GPS data
 #define PRINT_MAGNETOMETER 0     //Will print Magnetometer data (if magnetometer is enabled)
@@ -335,7 +335,7 @@ void loop() //Main Loop
 {
   timeNow = millis();
  
-  if((timeNow-timer)>=20)  // Main loop runs at 50Hz
+  if((timeNow-timer)>=100)  // Main loop runs at 50Hz
   {
     timer_old = timer;
     timer = timeNow;

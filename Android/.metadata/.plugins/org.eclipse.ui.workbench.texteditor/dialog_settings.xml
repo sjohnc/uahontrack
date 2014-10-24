@@ -2,36 +2,41 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
 		<item value="263" key="DIALOG_WIDTH"/>
-		<item value="129" key="DIALOG_Y_ORIGIN"/>
-		<item value="1020" key="DIALOG_X_ORIGIN"/>
+		<item value="137" key="DIALOG_Y_ORIGIN"/>
 		<item value="399" key="DIALOG_HEIGHT"/>
+		<item value="1093" key="DIALOG_X_ORIGIN"/>
 		<item value="1|Lucida Grande|11.0|0|COCOA|1|LucidaGrande" key="DIALOG_FONT_NAME"/>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="true" key="wrap"/>
-		<item value="false" key="casesensitive"/>
 		<item value="false" key="isRegEx"/>
+		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="false" key="wholeword"/>
-		<item value="txtvwSw" key="selection"/>
+		<item value="valid" key="selection"/>
 		<list key="findhistory">
-			<item value="txtvwsw"/>
-			<item value="btnadd"/>
-			<item value="spn"/>
-			<item value="btnad"/>
-			<item value="txtvws"/>
-			<item value="btnSendListener"/>
-			<item value="for"/>
-			<item value="forward"/>
+			<item value="valid"/>
+			<item value="updatetrain"/>
+			<item value="train"/>
+			<item value="trainBmp"/>
+			<item value="firstTouch"/>
+			<item value="column_index"/>
+			<item value="double"/>
+			<item value="button"/>
 		</list>
 		<list key="replacehistory">
-			<item value="switchList"/>
-			<item value="trainIndex"/>
-			<item value="CurrentRequest"/>
-			<item value="btnLoconet"/>
-			<item value="edtxtCustomCommCommand"/>
-			<item value="BlueTooth"/>
-			<item value="addressList"/>
+			<item value="btnLayout"/>
+			<item value="Coord"/>
+			<item value=""/>
+			<item value="localBarcodeIndex"/>
+			<item value="localTrainIndex"/>
+			<item value="Log.d(TAG_DEBUG,"/>
+			<item value="trainAdapter"/>
+			<item value="TAG_DEBUG,"/>
 		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.GotoLineAction$GotoLineDialog_dialogBounds">
+		<item value="284" key="DIALOG_Y_ORIGIN"/>
+		<item value="484" key="DIALOG_X_ORIGIN"/>
 	</section>
 </section>

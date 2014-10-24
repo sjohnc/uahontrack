@@ -24,7 +24,7 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int action_settings=0x7f08001a;
+        public static final int action_settings=0x7f08001b;
         public static final int btnAdd=0x7f080008;
         public static final int btnAddSwitch=0x7f080018;
         public static final int btnConnect=0x7f080006;
@@ -46,6 +46,7 @@ public final class R {
         public static final int spnTrain=0x7f080005;
         public static final int txtvwCommand=0x7f080000;
         public static final int txtvwCurrent=0x7f08000a;
+        public static final int txtvwIMUData=0x7f08001a;
         public static final int txtvwLocoCommand=0x7f08000c;
         public static final int txtvwSpeed=0x7f080004;
         public static final int txtvwStatus=0x7f080009;

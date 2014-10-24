@@ -11,10 +11,12 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 
@@ -23,7 +25,8 @@ public class image_view extends View  {
 	final int NUM_SWITCHES = 30;
 	
 	public class trainData {
-		public Bitmap mBitmapMove;
+		//public Bitmap mBitmapMove;
+		public ImageView myImgView;
 		private float left, right;
 		private float moving_speed;
 		
@@ -44,13 +47,13 @@ public class image_view extends View  {
 		}
 		
 
-		public Bitmap getmBitmapMove() {
-			return mBitmapMove;
-		}
+//		public Bitmap getmBitmapMove() {
+//			return mBitmapMove;
+//		}
 
 		public void setmBitmapMove(Bitmap mBitmapMove) {
 			
-			this.mBitmapMove = mBitmapMove;
+			myImgView.setImageBitmap(mBitmapMove);
 		}
 
 		public float getxCoordinate() {
@@ -96,9 +99,11 @@ public class image_view extends View  {
 		switchInfo = new trainData[NUM_SWITCHES];
 		for(int i = 0; i < NUM_TRAINS; i++){
 			trainInfo[i] = new trainData();
+			trainInfo[i].myImgView = new ImageView(context);
 		}
 		for(int i = 0; i < NUM_SWITCHES; i++){
 			switchInfo[i] = new trainData();
+			switchInfo[i].myImgView = new ImageView(context);
 		}
 		
 		
@@ -149,7 +154,7 @@ public class image_view extends View  {
 	    	numTrains = trainIndex+1;
 	    	Log.d("OnTrack", "ID is: " + id + " index is: "+ trainIndex);
 	    	Bitmap mBitMap = BitmapFactory.decodeResource(context.getResources(),id);
-	    	trainInfo[trainIndex].mBitmapMove = mBitMap;
+	    	trainInfo[trainIndex].myImgView.setImageBitmap(mBitMap);
 	    	
 	    }
 	 
@@ -161,7 +166,7 @@ public class image_view extends View  {
 	    	numSwitches = switchIndex+1;
 	    	Log.d("OnTrack", "ID is: " + id + " index is: "+ switchIndex);
 	    	Bitmap mBitMap = BitmapFactory.decodeResource(context.getResources(),id);
-	    	switchInfo[switchIndex].mBitmapMove = mBitMap;
+	    	switchInfo[switchIndex].myImgView.setImageBitmap(mBitMap);
 	    	
 	    }
 	
@@ -169,7 +174,7 @@ public class image_view extends View  {
 	@Override
 	protected void onDraw(Canvas canvas) {
 
-			CheckCorner(canvas);
+			//CheckCorner(canvas);
 			super.onDraw(canvas);
 	}
 	private void CheckCorner(Canvas canvas) {
@@ -177,16 +182,20 @@ public class image_view extends View  {
 		trainData currentTrain;
 		for(int trainIndex = 0; trainIndex < numTrains; trainIndex++){
 			currentTrain = trainInfo[trainIndex];
-			
-			canvas.drawBitmap(currentTrain.getmBitmapMove(), currentTrain.getxCoordinate(),
-							currentTrain.getyCoordinate(), new Paint());
+
+			BitmapDrawable drawable = (BitmapDrawable) currentTrain.myImgView.getDrawable();
+			Bitmap bitmap = drawable.getBitmap();
+				canvas.drawBitmap(bitmap, currentTrain.getxCoordinate(),
+						currentTrain.getyCoordinate(), new Paint());
 			
 		}
 		trainData currentSwitch;
 		for(int switchIndex = 0; switchIndex < numSwitches; switchIndex++){
 			currentSwitch = switchInfo[switchIndex];
-			
-			canvas.drawBitmap(currentSwitch.getmBitmapMove(), currentSwitch.getxCoordinate(),
+			currentSwitch.myImgView.bringToFront();
+			BitmapDrawable drawable = (BitmapDrawable) currentSwitch.myImgView.getDrawable();
+			Bitmap bitmap = drawable.getBitmap();
+				canvas.drawBitmap(bitmap, currentSwitch.getxCoordinate(),
 					currentSwitch.getyCoordinate(), new Paint());
 			
 		}

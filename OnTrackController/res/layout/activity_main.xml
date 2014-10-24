@@ -106,16 +106,47 @@
 
     </RelativeLayout>
 
-    <LinearLayout
+    <RelativeLayout
         android:id="@+id/displayLayout"
-        android:layout_width="1050dp"
-        android:layout_height="700dp"
-        android:layout_alignParentBottom="true"
+        android:layout_width="650dp"
+        android:layout_height="400dp"
         android:layout_alignParentTop="true"
-		android:layout_alignParentLeft="true"
-        android:orientation="vertical" >
+		android:layout_alignParentLeft="true">
 
 
-    </LinearLayout>
+    </RelativeLayout>
+    <RelativeLayout
+        android:id="@+id/trayLayout"
+        android:layout_width="650dp"
+        android:layout_height="75dp"
+        android:layout_alignParentBottom="true"
+		android:layout_alignParentLeft="true">
+         <ImageView
+            android:id="@+id/ImgViewTrains"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:src="@drawable/train1" />
+          <ImageView
+            android:id="@+id/ImgViewSwitches"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/ImgViewTrains"
+            android:layout_centerVertical="true"
+            android:src="@drawable/football" />
+         <ImageView
+            android:id="@+id/ImgViewBarcodes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/ImgViewSwitches"
+            android:src="@android:drawable/btn_star" />
+
+       
+
+       
+
+
+    </RelativeLayout>
 
 </RelativeLayout>

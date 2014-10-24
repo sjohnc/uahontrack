@@ -3,6 +3,8 @@ package edu.uah.testui;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -44,8 +46,8 @@ public class MainActivity extends Activity {
 	final int MAX_TRAINS = 10;
 	final int MAX_SWITCHES = 10;
 	final int MAX_BUFFER = 10;
-	final int IMU_DATA_SIZE = 44;
-	final int CURRENT_DATA_SIZE = 2;
+	final int IMU_DATA_SIZE = 34;
+	final int CURRENT_DATA_SIZE = 3;
 
 	EditText edtxtCustomCommAdd; // edit text for custom address
 	EditText edtxtCustomCommCommand; // edit text for custom speed
@@ -68,6 +70,7 @@ public class MainActivity extends Activity {
 	CheckBox chkbxLocoRaw;
 	TextView txtvwStatus; // textview for Status
 	TextView txtvwCurrent;
+	TextView txtvwIMUData;
 	List<String> list; // string list for train names
 	List<String> addressList; // string list to hold all bt device addresses
 	List<String> switchList; // string list for train names
@@ -81,9 +84,10 @@ public class MainActivity extends Activity {
 	int[] trainNum; // int array to hold train numbers
 	int[] switchAddress;
 	byte[][] currentBuffer = new byte[MAX_BUFFER][CURRENT_DATA_SIZE];
-	byte[][][] imuBuffer = new byte[MAX_BUFFER][MAX_TRAINS][IMU_DATA_SIZE];
+	byte[][][] imuBuffer = new byte[MAX_TRAINS][MAX_BUFFER][IMU_DATA_SIZE];
 	int currentBufferIndex = 0;
 	int imuBufferIndex = 0;
+	int imuTrainIndex = 0;
 	int trainIndex = 0; // current index to train array
 	int switchIndex = 0;
 	private String address = null; // default address will be changed
@@ -95,6 +99,8 @@ public class MainActivity extends Activity {
 	// profile
 	// UUID
 	private static final String TAG = "OnTrack";
+	protected static final byte CURRENT_HEADER = 11;
+	protected static final byte IMU_HEADER = 10;
 
 	Handler handler = new Handler();
 	Runnable currentRun = new Runnable() {
@@ -184,11 +190,13 @@ public class MainActivity extends Activity {
 		Log.d(TAG, "...onResume - try connect...");
 
 		// Set up a pointer to the remote node using it's address.
-		/*if (address != null) {
-
-			new btmakeconnection().execute();
-
-		}*/
+		/*
+		 * if (address != null) {
+		 * 
+		 * new btmakeconnection().execute();
+		 * 
+		 * }
+		 */
 	}
 
 	@Override
@@ -201,17 +209,14 @@ public class MainActivity extends Activity {
 
 			}
 		}
-		/*if (!exitingNow && btSocket != null)
-			try {
-				Log.d(TAG,
-						"Closing socket. thread is: " + currentThread.isAlive());
-				btSocket.close();
-				Log.d(TAG,
-						"Closed socket. thread is: " + currentThread.isAlive());
-			} catch (IOException e2) {
-				Log.d(TAG, "Closing socket exception caught thread is: "
-						+ currentThread.isAlive());
-			}*/
+		/*
+		 * if (!exitingNow && btSocket != null) try { Log.d(TAG,
+		 * "Closing socket. thread is: " + currentThread.isAlive());
+		 * btSocket.close(); Log.d(TAG, "Closed socket. thread is: " +
+		 * currentThread.isAlive()); } catch (IOException e2) { Log.d(TAG,
+		 * "Closing socket exception caught thread is: " +
+		 * currentThread.isAlive()); }
+		 */
 
 		super.onPause();
 	}
@@ -228,21 +233,21 @@ public class MainActivity extends Activity {
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			// Ask the user if they want to quit
 			new AlertDialog.Builder(this)
-			.setIcon(android.R.drawable.ic_dialog_alert)
-			.setTitle(R.string.quit)
-			.setMessage(R.string.really_quit)
-			.setPositiveButton(R.string.yes,
-					new DialogInterface.OnClickListener() {
+					.setIcon(android.R.drawable.ic_dialog_alert)
+					.setTitle(R.string.quit)
+					.setMessage(R.string.really_quit)
+					.setPositiveButton(R.string.yes,
+							new DialogInterface.OnClickListener() {
 
-				@Override
-				public void onClick(DialogInterface dialog,
-						int which) {
-					exitingNow = true;
-					// Stop the activity
-					MainActivity.this.finish();
-				}
+								@Override
+								public void onClick(DialogInterface dialog,
+										int which) {
+									exitingNow = true;
+									// Stop the activity
+									MainActivity.this.finish();
+								}
 
-			}).setNegativeButton(R.string.no, null).show();
+							}).setNegativeButton(R.string.no, null).show();
 
 			return true;
 		} else {
@@ -284,27 +289,27 @@ public class MainActivity extends Activity {
 			builderSingle.setNegativeButton("cancel",
 					new DialogInterface.OnClickListener() {
 
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					dialog.dismiss();
-				}
-			});
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							dialog.dismiss();
+						}
+					});
 
 			builderSingle.setAdapter(arrayAdapter,
 					new DialogInterface.OnClickListener() {
 
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					if (addressList.get(which) == "Add new") {
-						Intent intentBluetooth = new Intent();
-						intentBluetooth
-						.setAction(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
-						startActivity(intentBluetooth);
-					}
-					address = addressList.get(which);
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							if (addressList.get(which) == "Add new") {
+								Intent intentBluetooth = new Intent();
+								intentBluetooth
+										.setAction(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+								startActivity(intentBluetooth);
+							}
+							address = addressList.get(which);
 
-				}
-			});
+						}
+					});
 			builderSingle.show();
 			txtvwStatus.setText("Connecting to Bluetooth, please wait...");
 		}
@@ -456,6 +461,7 @@ public class MainActivity extends Activity {
 		spnSwitch = (Spinner) findViewById(R.id.spnSwitch);
 		btnAddSwitch = (Button) findViewById(R.id.btnAddSwitch);
 		btnSwitchPosition = (Button) findViewById(R.id.btnSwitchPosition);
+		txtvwIMUData = (TextView) findViewById(R.id.txtvwIMUData);
 
 		trainNum = new int[MAX_TRAINS];
 		switchAddress = new int[MAX_SWITCHES];
@@ -495,14 +501,22 @@ public class MainActivity extends Activity {
 		switchAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_spinner_item, switchList);
 		switchAdapter
-		.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnSwitch.setAdapter(switchAdapter);
 
 		dataAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_spinner_item, list);
 		dataAdapter
-		.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spnTrain.setAdapter(dataAdapter);
+		
+		for (int i = 0; i < MAX_BUFFER; i++)
+			for (int j = 0; j < CURRENT_DATA_SIZE; j++)
+				currentBuffer[i][j] = 0;
+		for (int i = 0; i < MAX_TRAINS; i++)
+			for (int j = 0; j < MAX_BUFFER; j++)
+				for (int k = 0; k < IMU_DATA_SIZE; k++)
+					imuBuffer[i][j][k] = 0;
 
 	}
 
@@ -538,6 +552,8 @@ public class MainActivity extends Activity {
 			}
 		edtxtCustomCommAdd.setText("");
 		edtxtCustomCommCommand.setText("");
+
+		
 	}
 
 	public void btnAddSwitchListener() {
@@ -546,43 +562,43 @@ public class MainActivity extends Activity {
 			// number of trains hasn't been
 			// exceeded.
 			new AlertDialog.Builder(MainActivity.this)
-			.setTitle("Add A Switch")
-			.setMessage("Please input the switch address number")
-			.setView(input)
-			.setPositiveButton("Ok",
-					new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,
-						int whichButton) {
-					int value;
-					try {
-						value = Integer.parseInt(input
-								.getText().toString());
-						if (value >= 0 && value <= 127) {
-							switchAddress[switchIndex] = value;
-							switchIndex++;
-							switchList.add("Switch " + value);
-						} else
-							txtvwStatus
-							.setText("Switch out of range.");
-					} catch (NumberFormatException nfe) {
-						System.out.println("Could not parse "
-								+ nfe);
-					}
+					.setTitle("Add A Switch")
+					.setMessage("Please input the switch address number")
+					.setView(input)
+					.setPositiveButton("Ok",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int whichButton) {
+									int value;
+									try {
+										value = Integer.parseInt(input
+												.getText().toString());
+										if (value >= 0 && value <= 127) {
+											switchAddress[switchIndex] = value;
+											switchIndex++;
+											switchList.add("Switch " + value);
+										} else
+											txtvwStatus
+													.setText("Switch out of range.");
+									} catch (NumberFormatException nfe) {
+										System.out.println("Could not parse "
+												+ nfe);
+									}
 
-				}
-			})
-			.setNegativeButton("Cancel",
-					new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,
-						int whichButton) {
-					// Do nothing.
-				}
-			}).show();
+								}
+							})
+					.setNegativeButton("Cancel",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int whichButton) {
+									// Do nothing.
+								}
+							}).show();
 		} else
 			txtvwStatus.setText("No more switches allowed.");
 	}
 
-	private void createCurrentThread() {
+	private void createCurrentThread() { //rename createBTRecieveThread
 		currentThread = new Thread(new Runnable() {
 			public void run() {
 				boolean excep = false;
@@ -590,12 +606,17 @@ public class MainActivity extends Activity {
 					if (currentRunning && btSocket != null) {
 						// Keep listening to the InputStream until an exception
 						// occurs
-						// receive thread should look at first byte of the message.
-						// depending on first byte it should either prepare to receive
+						// receive thread should look at first byte of the
+						// message.
+						// depending on first byte it should either prepare to
+						// receive
 						// current data, or location/imu data.
-						// so it check available, read the first byte, switch on that byte
-						// waiting on the correct number of bytes to be available for that type
-						// it should then put that incoming message into a buffer to be worked on
+						// so it check available, read the first byte, switch on
+						// that byte
+						// waiting on the correct number of bytes to be
+						// available for that type
+						// it should then put that incoming message into a
+						// buffer to be worked on
 						// and raise a flag or spawn a worker thread.
 
 						try {
@@ -605,27 +626,48 @@ public class MainActivity extends Activity {
 								btInStream = btSocket.getInputStream();
 								int bytes = 0;
 								bytes = btInStream.available();
-								if(bytes > 0)
-								{
-
+								Log.d("OnTrack", "Inside createCurrentThread and bytes are: "+bytes);
+								//byte[] header = new byte[1];
+								
+								if (bytes > 0) {
+									// receive first byte
+									inbuffer = new byte[bytes];
+									Log.d("OnTrack", "number of bytes " + bytes);
+									btInStream.read(inbuffer, 0, inbuffer.length);
+								//	bytes = btInStream.available();
 									Log.d("OnTrack", "Received message.");
-									if(bytes >= CURRENT_DATA_SIZE){
-										inbuffer = new byte[bytes];
 									
-										btInStream.read(inbuffer, 0, bytes);
+									
+									if (bytes == CURRENT_DATA_SIZE
+											&& inbuffer[0] == CURRENT_HEADER) {
+									
 
-										//switch on inbuffer[0] should go here
-										currentBuffer[currentBufferIndex % MAX_BUFFER][0] = inbuffer[0];
-										currentBuffer[currentBufferIndex % MAX_BUFFER][1] = inbuffer[1];
+									//	btInStream.read(inbuffer, 0, bytes);
+
+										// switch on inbuffer[0] should go here
+										currentBuffer[currentBufferIndex
+												% MAX_BUFFER][0] = inbuffer[1];
+										currentBuffer[currentBufferIndex
+												% MAX_BUFFER][1] = inbuffer[2];
 										currentBufferIndex++;
-										//spawn current calc thread.
-										if(currentBufferIndex >= MAX_BUFFER)
+										// spawn current calc thread.
+										if (currentBufferIndex >= MAX_BUFFER)
 											updateCurrent();
+									} else if (bytes == IMU_DATA_SIZE
+											&& inbuffer[0] == IMU_HEADER) {
+										//inbuffer = new byte[bytes];
+
+										Log.d("OnTrack", "Received IMU data.");
+										//btInStream.read(inbuffer, 0, bytes);
+										int imuTrainID = (int) (inbuffer[1 & 0xff]);
+										for (int i = 0; i < IMU_DATA_SIZE- 2; i++)
+											imuBuffer[imuTrainID][0][i] = inbuffer[i + 2];
+										imuBufferIndex++;
+										// spawn current calc thread.
+										updateIMU(imuTrainID);
 									}
-								}
-
-
-
+								
+							}
 							}
 
 						} catch (IOException e) {
@@ -640,29 +682,97 @@ public class MainActivity extends Activity {
 
 	}
 
-	private void updateCurrent(){
-		int current[] = new int[MAX_BUFFER];
-		int sum = 0;
-		Log.d("OnTrack", "Current: being calc");
-		for(int i = 0; i < MAX_BUFFER; i++){
-			current[i] = (currentBuffer[i][0] & 0xff);
-			current[i] = current[i] << 8;
-			current[i] = current[i] & 0xff00;
-			current[i] = current[i] | (currentBuffer[i][1] & 0xff);
-			current[i] = current[i] & 0xffff;
-			current[i] = (int) (current[i] * 4.296);
-			sum += current[i];
-		}
-		final double update = (double)sum/(double)MAX_BUFFER;
-		txtvwCurrent.post(new Runnable() {
-
-			@Override
+	private void updateIMU(final int imuTrainID) {
+		new Thread(new Runnable() {
 			public void run() {
-				txtvwCurrent.setText(String
-						.valueOf(update) + " mA");
+		
+				byte[] acelXBytes = new byte[4];
+				byte[] acelYBytes = new byte[4];
+				byte[] acelZBytes = new byte[4];
+				byte[] gyroYawBytes = new byte[4];
+				byte[] gyroPitchBytes = new byte[4];
+				byte[] gyroRawBytes = new byte[4];
+				byte[] tieCountBytes = new byte[4];
+				byte[] imuChecksumBytes = new byte[4];
+		
+				for (int i = 0; i < 4; i++) {
+					acelXBytes[i] = imuBuffer[imuTrainID][0][i];
+					acelYBytes[i] = imuBuffer[imuTrainID][0][i + 4];
+					acelZBytes[i] = imuBuffer[imuTrainID][0][i + 8];
+					gyroYawBytes[i] = imuBuffer[imuTrainID][0][i + 12];
+					gyroPitchBytes[i] = imuBuffer[imuTrainID][0][i + 16];
+					gyroRawBytes[i] = imuBuffer[imuTrainID][0][i + 20];
+					tieCountBytes[i] = imuBuffer[imuTrainID][0][i + 24];
+					imuChecksumBytes[i] = imuBuffer[imuTrainID][0][i + 28];
+		
+				}
+				Log.d("OnTrack", "Inside updateIMU function.");
+				
+				
+				final float acelX = ByteBuffer.wrap(acelXBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				final float acelY = ByteBuffer.wrap(acelYBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				final float acelZ = ByteBuffer.wrap(acelZBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				
+				final float gyroYaw = ByteBuffer.wrap(gyroYawBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				
+				final float gyroPitch = ByteBuffer.wrap(gyroPitchBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				
+				final float gyroRaw = ByteBuffer.wrap(gyroRawBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+				
+				final int tieCount = ByteBuffer.wrap(tieCountBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getInt();
+				final float imuChecksum = ByteBuffer.wrap(imuChecksumBytes)
+						.order(ByteOrder.LITTLE_ENDIAN).getFloat();
+		
+				txtvwIMUData.post(new Runnable() {
+		
+					@Override
+					public void run() {
+						txtvwIMUData.setText("Train #" + imuTrainID + ": acel x"
+								+ String.valueOf(acelX) + ", acel y " + String.valueOf(acelY)
+								+ ", acel z " + String.valueOf(acelZ) + ", gyroYaw " + String.valueOf(gyroYaw) + 
+								", gyroPitch " + String.valueOf(gyroPitch) + ", gyroRaw " + String.valueOf(gyroRaw) +
+								", tieCount " + String.valueOf(tieCount) + ", imuChecksum "
+								+ String.valueOf(imuChecksum));
+		
+					}
+				});
 			}
 		});
+	
+	}
 
+	private void updateCurrent() {
+		new Thread(new Runnable() {
+			public void run() {
+				int current[] = new int[MAX_BUFFER];
+				int sum = 0;
+				Log.d("OnTrack", "Current: being calc");
+				for (int i = 0; i < MAX_BUFFER; i++) {
+					current[i] = (currentBuffer[i][0] & 0xff);
+					current[i] = current[i] << 8;
+					current[i] = current[i] & 0xff00;
+					current[i] = current[i] | (currentBuffer[i][1] & 0xff);
+					current[i] = current[i] & 0xffff;
+					current[i] = (int) (current[i] * 4.296);
+					sum += current[i];
+				}
+				final double update = (double) sum / (double) MAX_BUFFER;
+				txtvwCurrent.post(new Runnable() {
+		
+					@Override
+					public void run() {
+						txtvwCurrent.setText(String.valueOf(update) + " mA");
+					}
+				});
+			}
+		});
 	}
 
 	public void btnSendListener() {
@@ -757,38 +867,38 @@ public class MainActivity extends Activity {
 		if (trainIndex < MAX_TRAINS) { // Checks to make sure the maximum number
 			// of trains hasn't been exceeded.
 			new AlertDialog.Builder(MainActivity.this)
-			.setTitle("Add A Train")
-			.setMessage("Please input the train number")
-			.setView(input)
-			.setPositiveButton("Ok",
-					new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,
-						int whichButton) {
-					int value;
-					try {
-						value = Integer.parseInt(input
-								.getText().toString());
-						if (value >= 0 && value <= 127) {
-							trainNum[trainIndex] = value;
-							trainIndex++;
-							list.add("Train " + value);
-						} else
-							txtvwStatus
-							.setText("Train out of range.");
-					} catch (NumberFormatException nfe) {
-						System.out.println("Could not parse "
-								+ nfe);
-					}
+					.setTitle("Add A Train")
+					.setMessage("Please input the train number")
+					.setView(input)
+					.setPositiveButton("Ok",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int whichButton) {
+									int value;
+									try {
+										value = Integer.parseInt(input
+												.getText().toString());
+										if (value >= 0 && value <= 127) {
+											trainNum[trainIndex] = value;
+											trainIndex++;
+											list.add("Train " + value);
+										} else
+											txtvwStatus
+													.setText("Train out of range.");
+									} catch (NumberFormatException nfe) {
+										System.out.println("Could not parse "
+												+ nfe);
+									}
 
-				}
-			})
-			.setNegativeButton("Cancel",
-					new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,
-						int whichButton) {
-					// Do nothing.
-				}
-			}).show();
+								}
+							})
+					.setNegativeButton("Cancel",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int whichButton) {
+									// Do nothing.
+								}
+							}).show();
 		} else
 			txtvwStatus.setText("No more trains allowed.");
 	}
@@ -876,7 +986,7 @@ public class MainActivity extends Activity {
 						.toString(), 16);
 			} else {
 				simpleSwitchAddress = switchAddress[spnSwitch
-				                                    .getSelectedItemPosition()];
+						.getSelectedItemPosition()];
 				address = simpleSwitchAddress & 0x7f;
 				command = ((simpleSwitchAddress >> 7) & 0x0f);
 				if (btnSwitchPosition.getText().toString() == "Straight")
@@ -1112,28 +1222,28 @@ public class MainActivity extends Activity {
 		});
 
 		skbarSpeed
-		.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+				.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
-			@Override
-			public void onStopTrackingTouch(SeekBar seekBar) {
-				if (btconnected && btSocket != null
-						&& btSocket.isConnected())
-					btnSendListener();
-			}
+					@Override
+					public void onStopTrackingTouch(SeekBar seekBar) {
+						if (btconnected && btSocket != null
+								&& btSocket.isConnected())
+							btnSendListener();
+					}
 
-			@Override
-			public void onStartTrackingTouch(SeekBar seekBar) {
+					@Override
+					public void onStartTrackingTouch(SeekBar seekBar) {
 
-			}
+					}
 
-			@Override
-			public void onProgressChanged(SeekBar seekBar,
-					int progress, boolean fromUser) {
-				if (btconnected && btSocket != null
-						&& btSocket.isConnected())
-					btnSendListener();
-			}
-		});
+					@Override
+					public void onProgressChanged(SeekBar seekBar,
+							int progress, boolean fromUser) {
+						if (btconnected && btSocket != null
+								&& btSocket.isConnected())
+							btnSendListener();
+					}
+				});
 
 		chkbxRawComm.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 

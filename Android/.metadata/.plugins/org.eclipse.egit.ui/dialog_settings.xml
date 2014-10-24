@@ -9,16 +9,17 @@
 	<list key="CommitDialog.committerValues">
 		<item value="sjohnc &lt;sjohnc@gmail.com&gt;"/>
 	</list>
-	<section name="org.eclipse.egit.ui.internal.dialogs.ResetTargetSelectionDialog.dialogBounds">
-		<item value="525" key="DIALOG_WIDTH"/>
-		<item value="9" key="DIALOG_Y_ORIGIN"/>
-		<item value="458" key="DIALOG_X_ORIGIN"/>
-		<item value="580" key="DIALOG_HEIGHT"/>
-		<item value="1|Lucida Grande|11.0|0|COCOA|1|LucidaGrande" key="DIALOG_FONT_NAME"/>
-	</section>
 	<section name="GitCreatePatchWizard">
 		<item value="3" key="GitCreatePatchWizard.OptionsPage.contextLines"/>
 		<item value="NONE" key="GitCreatePatchWizard.OptionsPage.format"/>
+		<item value="clipboard" key="GitCreatePatchWizard.LocationPage.location"/>
+	</section>
+	<section name="org.eclipse.egit.ui.internal.dialogs.ResetTargetSelectionDialog.dialogBounds">
+		<item value="525" key="DIALOG_WIDTH"/>
+		<item value="9" key="DIALOG_Y_ORIGIN"/>
+		<item value="580" key="DIALOG_HEIGHT"/>
+		<item value="458" key="DIALOG_X_ORIGIN"/>
+		<item value="1|Lucida Grande|11.0|0|COCOA|1|LucidaGrande" key="DIALOG_FONT_NAME"/>
 	</section>
 	<section name="GitCommitMessageComponent">
 	</section>
@@ -29,15 +30,15 @@
 	<section name="org.eclipse.egit.ui.internal.fetch.FetchResultDialog.dialogBounds">
 		<item value="600" key="DIALOG_WIDTH"/>
 		<item value="102" key="DIALOG_Y_ORIGIN"/>
-		<item value="420" key="DIALOG_X_ORIGIN"/>
 		<item value="440" key="DIALOG_HEIGHT"/>
+		<item value="420" key="DIALOG_X_ORIGIN"/>
 		<item value="1|Lucida Grande|11.0|0|COCOA|1|LucidaGrande" key="DIALOG_FONT_NAME"/>
 	</section>
 	<section name="org.eclipse.egit.ui.internal.push.PushResultDialog.dialogBounds">
 		<item value="650" key="DIALOG_WIDTH"/>
 		<item value="102" key="DIALOG_Y_ORIGIN"/>
-		<item value="395" key="DIALOG_X_ORIGIN"/>
 		<item value="440" key="DIALOG_HEIGHT"/>
+		<item value="395" key="DIALOG_X_ORIGIN"/>
 		<item value="1|Lucida Grande|11.0|0|COCOA|1|LucidaGrande" key="DIALOG_FONT_NAME"/>
 	</section>
 </section>
